@@ -25,6 +25,7 @@ __author__ = "Martin Huus Bjerge"
 __copyright__ = "Copyright 2017, Rope Robotics ApS, Denmark"
 __license__ = "MIT License"
 
+from pkg_resources import resource_filename
 import URBasic
 import threading
 import socket
@@ -87,10 +88,8 @@ class RTDE(threading.Thread): #, metaclass=Singleton
         self._logger = logger.__dict__[name]
         self.__reconnectTimeout = 600 #Seconds (while in run)
         self.__dataSend = RTDEDataObject()
-        if conf_filename is None:
-            conf_filename = URBasic.__file__[0:URBasic.__file__.find('URBasic')] + 'rtdeConfiguration.xml'
-            if not os.path.isfile(conf_filename):
-                conf_filename = URBasic.__file__[0:URBasic.__file__.find('URBasic')] + 'rtdeConfigurationDefault.xml'
+        # always use the rtdeCOnfiguration in the packages folder
+        conf_filename = resource_filename(__name__, 'rtdeConfigurationDefault.xml')
         self.__conf_filename = conf_filename
         self.__stop_event = True
         threading.Thread.__init__(self)
@@ -463,6 +462,7 @@ class RTDE(threading.Thread): #, metaclass=Singleton
     def __updateModel(self, rtde_data_package):
         self.__packageCounter = self.__packageCounter + 1
         #print("got a rtde package nr " + str(self.__packageCounter))
+        #print("RTDe Package keys:", rtde_data_package.keys())
         if(self.__packageCounter % 1000 == 0):
             self._logger.info("Total packages: " + str(self.__packageCounter))
         if(self.__robotModel.dataDir['timestamp'] != None):

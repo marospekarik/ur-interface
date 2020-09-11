@@ -26,6 +26,7 @@ __author__ = "Martin Huus Bjerge"
 __copyright__ = "Copyright 2017, Rope Robotics ApS, Denmark"
 __license__ = "MIT License"
 
+from pkg_resources import resource_filename
 import logging
 import time
 import os
@@ -48,7 +49,7 @@ class DataLogging(with_metaclass(Singleton, object)):
     A module that add general logging functions to the UR Interface framework.
     '''
 
-    def __init__(self,path=None):
+    def __init__(self, path=None, config=None):
         '''
         Constructor that setup a path where log files will be stored.
         '''
@@ -59,7 +60,10 @@ class DataLogging(with_metaclass(Singleton, object)):
         self.__eventLogFileMode = 'w'
         self.__dataLogFileMode = 'w'
 
-        configFilename = URBasic.__file__[0:URBasic.__file__.find('URBasic')] + 'logConfig.xml'
+        if config is None:
+            configFilename = resource_filename(__name__, 'logConfig.xml')
+        else:
+            configFilename = config
         self.__readConfig(configFileName=configFilename)
 
         self.GetLogPath(path=path, developerTestingFlag=self.__developerTestingFlag)
@@ -122,7 +126,7 @@ class DataLogging(with_metaclass(Singleton, object)):
                 os.makedirs(self.directory)
         return self.directory, self.logDir
 
-    def AddEventLogging(self, name='root', log2file=True, log2Consol=True, level = logging.INFO):
+    def AddEventLogging(self, name='root', log2file=True, log2Consol=True, level = logging.WARNING):
         '''
         Add a new event logger, the event logger can log data to a file and also output the log to the console.
 
@@ -156,7 +160,7 @@ class DataLogging(with_metaclass(Singleton, object)):
         name = name+'Data'
         self.__dict__[name] = logging.getLogger(name)
         self.__dict__[name].addHandler(self.fileDataLogHandler)
-        self.__dict__[name].setLevel(logging.INFO)
+        self.__dict__[name].setLevel(logging.WARNING)
         if self.writeDataLogHeadder:
             self.__dict__[name].info('Time;ModuleName;Level;Channel;UR_Time;Value1;Value2;Value3;Value4;Value5;Value6')
             self.fileDataLogHandler.setFormatter(logging.Formatter('%(asctime)s;%(name)s;%(levelname)s;%(message)s'))
