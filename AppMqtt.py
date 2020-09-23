@@ -25,8 +25,8 @@ class App(QWidget):
         self.activated = False
 
         # Tablet canvas size
-        self.tabletW = 2560
-        self.tabletH = 1440
+        self.tabletW = 1920
+        self.tabletH = 1080
 
         # Tablet
         self.pen_is_down = False
@@ -44,7 +44,7 @@ class App(QWidget):
         self.client.stateChanged.connect(self.on_stateChanged)
         self.client.messageSignal.connect(self.on_messageSignal)
 
-        self.client.hostname = "localhost"
+        self.client.hostname = "172.24.210.63"
         self.client.connectToHost()
 
     @QtCore.pyqtSlot(int)
