@@ -2,23 +2,23 @@
 Python 3.x library to control an UR robot through its TCP/IP interfaces
 Copyright (C) 2017  Martin Huus Bjerge, Rope Robotics ApS, Denmark
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software 
-and associated documentation files (the "Software"), to deal in the Software without restriction, 
-including without limitation the rights to use, copy, modify, merge, publish, distribute, 
-sublicense, and/or sell copies of the Software, and to permit persons to whom the Software 
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software
+and associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software
 is furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all copies 
+The above copyright notice and this permission notice shall be included in all copies
 or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
-PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL "Rope Robotics ApS" BE LIABLE FOR ANY CLAIM, 
-DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL "Rope Robotics ApS" BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-Except as contained in this notice, the name of "Rope Robotics ApS" shall not be used 
-in advertising or otherwise to promote the sale, use or other dealings in this Software 
+Except as contained in this notice, the name of "Rope Robotics ApS" shall not be used
+in advertising or otherwise to promote the sale, use or other dealings in this Software
 without prior written authorization from "Rope Robotics ApS".
 '''
 __author__ = "Martin Huus Bjerge"
@@ -30,25 +30,25 @@ import URBasic
 class RobotModel(object):
     '''
     Data class holding all data and states
-         
+
     Input parameters:
 
     '''
 
 
-    def __init__(self):
+    def __init__(self, log_path="ur_log/", log_config_path=None):
         '''
         Constructor see class description for more info.
         '''
-        logger = URBasic.dataLogging.DataLogging()        
-        name = logger.AddEventLogging(__name__)        
+        logger = URBasic.dataLogging.DataLogging(path=log_path, config=log_config_path)
+        name = logger.AddEventLogging(__name__)
         self.__logger = logger.__dict__[name]
         self.__logger.info('Init done')
-        
+
         #Universal Robot Model content
         self.password = None
         self.ipAddress = None
-        
+
         self.dataDir = {'timestamp':None,
                          'target_q':None,
                          'target_q':None,
@@ -153,18 +153,19 @@ class RobotModel(object):
                          'urPlus_force_torque_sensor':None,
                          'urPlus_totalMovedVerticalDistance':None
                          }
-                            
-        
+
+
         self.rtcConnectionState = None
         self.rtcProgramRunning = False
         self.rtcProgramExecutionError = False
         self.stopRunningFlag = False
-        self.forceRemoteActiveFlag = False 
-
+        self.forceRemoteActiveFlag = False
+        self.realtimeControlFlag = False
+        
         # UR plus content
         self.hasForceTorqueSensor = False
         self.forceTourqe = None
-        
+
     def RobotTimestamp(self):return self.dataDir['timestamp']
     def LastUpdateTimestamp(self):raise NotImplementedError('Function Not yet implemented')
     def RTDEConnectionState(self):raise NotImplementedError('Function Not yet implemented')
@@ -176,28 +177,28 @@ class RobotModel(object):
             return n&self.dataDir['actual_digital_input_bits']==n
         else:
             return None
-        
+
     def ConfigurableInputBits(self,n):
         if n>=8 & n<16:
             n = pow(2,n+8)
             return n&self.dataDir['actual_digital_input_bits']==n
         else:
             return None
-    
+
     def DigitalOutputBits(self,n):
         if n>=0 & n<8:
             n = pow(2,n)
             return n&self.dataDir['actual_digital_output_bits']==n
         else:
             return None
-    
+
     def ConfigurableOutputBits(self,n):
         if n>=8 & n<16:
             n = pow(2,n+8)
             return n&self.dataDir['actual_digital_output_bits']==n
         else:
             return None
-    
+
     def RTDEProtocolVersion(self):raise NotImplementedError('Function Not yet implemented')
     def ActualTCPPose(self):return self.dataDir['actual_TCP_pose']
     def RobotModee(self):raise NotImplementedError('Function Not yet implemented')
@@ -206,13 +207,13 @@ class RobotModel(object):
     def TargetQD(self):raise NotImplementedError('Function Not yet implemented')
     def TargetQDD(self):raise NotImplementedError('Function Not yet implemented')
     def TargetCurrent(self):raise NotImplementedError('Function Not yet implemented')
-    def TargetMoment(self):raise NotImplementedError('Function Not yet implemented')     
+    def TargetMoment(self):raise NotImplementedError('Function Not yet implemented')
     def ActualQ(self):return self.dataDir['actual_q']
     def ActualQD(self):raise NotImplementedError('Function Not yet implemented')
     def ActualCurrent(self):raise NotImplementedError('Function Not yet implemented')
     def JointControlOutput(self):raise NotImplementedError('Function Not yet implemented')
-    def ActualTCPSpeed(self):raise NotImplementedError('Function Not yet implemented')
-    def ActualTCPForce(self):raise NotImplementedError('Function Not yet implemented')
+    def ActualTCPSpeed(self):return self.dataDir["actual_TCP_speed"]
+    def ActualTCPForce(self):return self.dataDir['actual_TCP_force']
     def TargetTCPPose(self):raise NotImplementedError('Function Not yet implemented')
     def TargetTCPSpeed(self):raise NotImplementedError('Function Not yet implemented')
     def JointTemperatures(self):raise NotImplementedError('Function Not yet implemented')
@@ -252,7 +253,7 @@ class RobotModel(object):
         result.TeachButtonPressed =  4&self.dataDir['robot_status_bits']==4
         result.PowerButtonPressed =  8&self.dataDir['robot_status_bits']==8
         return result
-    
+
     def SafetyStatus(self):
         '''
         SafetyStatusBit class defined in the bottom of this file
@@ -270,9 +271,9 @@ class RobotModel(object):
         result.Fault                  =   512&self.dataDir['safety_status_bits']==512
         result.StoppedDueToSafety     =  1024&self.dataDir['safety_status_bits']==1024
         return result
-    
-    def TcpForceScalar(self):raise NotImplementedError('Function Not yet implemented')
-    
+
+    def TcpForceScalar(self): return self.dataDir['tcp_force_scalar']
+
     def OutputBitRegister(self):
         result = [None]*64
         for ii in range(64):
@@ -281,8 +282,10 @@ class RobotModel(object):
             elif ii>31 and self.dataDir['output_bit_registers32_to_63'] is not None:
                 result[ii] = 2**(ii-32)&self.dataDir['output_bit_registers32_to_63']==2**(ii-32)
         return result
-    
-    def OutputDoubleRegister(self):raise NotImplementedError('Function Not yet implemented')
+
+    def OutputDoubleRegister(self, n):
+        return self.dataDir["output_double_register_" + str(n)]
+
     def UrControlVersion(self):raise NotImplementedError('Function Not yet implemented')
     def ClearToSend(self):raise NotImplementedError('Function Not yet implemented')
 
@@ -305,4 +308,3 @@ class SafetyStatusBit(object):
     Violation = None
     Fault = None
     StoppedDueToSafety = None
-    

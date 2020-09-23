@@ -31,7 +31,7 @@ import URBasic
 import time
 
 
-host = '192.168.0.113'   #E.g. a Universal Robot offline simulator, please adjust to match your IP
+host = '127.0.0.1'   #E.g. a Universal Robot offline simulator, please adjust to match your IP
 acc = 0.9
 vel = 0.9
 
@@ -49,17 +49,42 @@ def ExampleurScript():
     robotModle = URBasic.robotModel.RobotModel()
     robot = URBasic.urScriptExt.UrScriptExt(host=host,robotModel=robotModle)
     robot.reset_error()
-    print('movej with joint specification')
-    robot.movej(q=[-3.14,-1.,0.5, -1.,-1.5,0], a=acc, v=vel)
+    robot.init_realtime_control()
+    import math
+    X = 0
+    Z = 0
+    r = 10
+
+    for x in range(0,200):
+
+        X = math.sin(x*6.28/20) *40 + 150
+        
+        Z = math.cos(x*6.28/20) *40 +150
+        print(X,Z)
+
+        robot.set_realtime_pose([X*0.001,0.3,Z*0.001, 0,3.14,0])
+
+        time.sleep(0.1)
+
+    robot.set_realtime_pose([0.33,0.3,0.3, 0,3.14,0])
+
+    time.sleep(1)
+    robot.set_realtime_pose([0.3,0.3,0.3, 0,3.14,0])
+
+    # robot.set_realtime_pose([-3,-1.,0.5, -1.,-1.5,0])
+    # time.sleep(0.5)
+
+    # print('movej with joint specification')
+    # robot.movej(q=[-3.14,-1.,0.5, -1.,-1.5,0], a=acc, v=vel)
     
-    print('movej with pose specification')
-    robot.movej(pose=[0.3,0.3,0.3, 0,3.14,0], a=1.2, v=vel)
+    # print('movej with pose specification')
+    # robot.movej(pose=[0.3,0.3,0.3, 0,3.14,0], a=1.2, v=vel)
     
-    print('movel with pose specification')
-    robot.movel(pose=[0.3,-0.3,0.3, 0,3.14,0], a=1.2, v=vel)
+    # print('movel with pose specification')
+    # robot.movel(pose=[0.3,-0.3,0.3, 0,3.14,0], a=1.2, v=vel)
                 
-    print('forcs_mode')
-    robot.force_mode(task_frame=[0., 0., 0.,  0., 0., 0.], selection_vector=[0,0,1,0,0,0], wrench=[0., 0., -20.,  0., 0., 0.], f_type=2, limits=[2, 2, 1.5, 1, 1, 1])
+    # print('forcs_mode')
+    #robot.force_mode(task_frame=[0., 0., 0.,  0., 0., 0.], selection_vector=[0,0,1,0,0,0], wrench=[0., 0., -20.,  0., 0., 0.], f_type=2, limits=[2, 2, 1.5, 1, 1, 1])
     time.sleep(1)
     robot.end_force_mode()
     robot.close()
@@ -112,6 +137,6 @@ def ExampleFT_sensor():
 
 if __name__ == '__main__':
     ExampleurScript()
-    ExampleExtendedFunctions()
+    #ExampleExtendedFunctions()
     #ExampleFT_sensor()
     
