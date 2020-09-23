@@ -11,8 +11,6 @@ import operator
 import URBasic
 from Robot import MyRobot
 
-
-
 class App(QWidget):
     def __init__(self):
         super().__init__()
