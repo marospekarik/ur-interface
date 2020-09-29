@@ -4,6 +4,7 @@ import time
 import math
 import csv
 import random
+import json
 
 #host = '172.24.210.207'   
 #host = '127.0.0.1'   
@@ -14,7 +15,6 @@ acc = 0.9
 vel = 0.9
 class MyRobot(URBasic.urScriptExt.UrScriptExt):
     def __init__(self):
-        print('hey')
         robotModle = URBasic.robotModel.RobotModel()
         self.robot = URBasic.urScriptExt.UrScriptExt(host=host,robotModel=robotModle)
         self.robot.reset_error()
@@ -31,10 +31,12 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
         self.xShift = 0
 
         # Save each recorded calibrated point into this class
-        self.bottomLeftPoint = [0.4978084779345779, -0.1386848395946652, -0.025796102948670824]
-        self.topLeftPoint = [0.22066774243391915, -0.14470219786909863, -0.02764251442054466]
-        self.topRightPoint  = [0.2137692974889034, 0.24787073578660002, -0.024760881329201456]
-        self.bottomRightPoint = [0.48096748140905454, 0.2537106743403917, -0.02478358350645858]
+        with open('calibration_points.json') as json_file:
+            points = json.load(json_file)
+            self.bottomLeftPoint = points["bottomLeft"]
+            self.topLeftPoint = points["topLeft"]
+            self.topRightPoint  = points["topRight"]
+            self.bottomRightPoint = points["bottomRight"]
 
         # These parameters represent the variables for translating the alternative values to new coordinates of drawing
         self.theta = 0
@@ -49,16 +51,8 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
         self.plE1_b = 0
         self.plE1_c = 0
         self.plE1_d = 0
-
-        self.endPntPose = [-0.14959202618776724, -0.6892203786569369, 0.45944469344501543,
-                           -3.141369099840455, -0.023765232731069934, -0.018604100882098216]
-        
         return
 
-
-    def RunCalibration(self):
-        self.Calibrate()
-    
     def constructDrawingCanvas(self):
         p1 = np.array(self.bottomLeftPoint)
         p2 = np.array(self.bottomRightPoint)
@@ -228,14 +222,13 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
         print('Canvas Midpoint',self.canvasMidpoint)
         return
 
-
     def getCalibPt(self):
         self.robot.end_freedrive_mode()
         calPt = self.robot.get_actual_tcp_pose()
         print(calPt[0], calPt[1], calPt[2])
         return calPt
 
-    def Calibrate(self, corner):
+    def Calibrate(self, corner, size = [0, 0]):
         if corner == 0:
             calPt = self.getCalibPt()
             self.bottomLeftPoint = [calPt[0], calPt[1], calPt[2], ]
@@ -252,5 +245,16 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
             calPt = self.getCalibPt()
             self.bottomRightPoint = [calPt[0], calPt[1], calPt[2], ]
             self.constructDrawingCanvas()
+            self.calculateCroppedSizing(size[0], size[1])
+
             self.PrintAllVar()
+            data = {
+                "bottomLeft": self.bottomLeftPoint,
+                "topLeft": self.topLeftPoint,
+                "topRight": self.topRightPoint,
+                "bottomRight": self.bottomRightPoint
+            }
+            with open('calibration_points.json', 'w') as outfile:
+                json.dump(data, outfile)
+                print("JSON Saved: ", json.dumps(data))
         return
