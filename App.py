@@ -92,21 +92,23 @@ class App(QWidget):
         # Canvas size
         self.canvasW = self.settings.value("width") #2560
         self.canvasH = self.settings.value("height") #1440
-        self.zOffset = self.settings.value("zOffset") #0.04
+        self.zOffset = float(self.settings.value("zOffset")) or 0 #0.04
         self.remotePos = "X: not received | Y: not received"
         self.tabletPos = "X: not received | Y: not received"
         self.controlMode = self.settings.value("controlMode")
 
         self.initUI()
-        #self.myRobot = MyRobot()
-        self.myRobot = False
+        #self.myRobot = MyRobot(host = '169.254.178.76')
+        self.myRobot = MyRobot(host = '172.24.210.100')
+
+        #self.myRobot = False
         self.activated = False
         self.freeModeOn = False
 
         self.client = MqttClient(self)
         self.client.stateChanged.connect(self.on_stateChanged)
         self.client.messageSignal.connect(self.on_messageSignal)
-        self.client.hostname = "172.24.210.63"
+        self.client.hostname = "localhost" #"172.24.210.63"
         self.client.connectToHost()
     
     # def initMqtt():
@@ -197,9 +199,12 @@ class App(QWidget):
     def on_click_free(self):
         self.changeColor(self.btn_freeMode)
         if self.freeModeOn:
-            self.myRobot.robot.freedrive_mode()
-        else:
             self.myRobot.robot.end_freedrive_mode()
+            self.freeModeOn = False
+        else:
+            self.myRobot.robot.freedrive_mode()
+            self.freeModeOn = True
+
 
     def on_click_reset_error(self):
         self.changeColor(self.btn_freeMode)
@@ -246,12 +251,11 @@ class App(QWidget):
         try:
             if self.activated:
                 val = msg.split(',')
-                print("Received value:", val[0], ",", val[1])
                 x = int(val[0])
                 y = int(val[1])
-                #self.remotePos = f"X: {x} | Y: {y}"
+                self.label_remote_pos_val.setText(f"X: {x} | Y: {y}")
                 coord = self.myRobot.PixelTranslation(x, y, self.canvasH, self.canvasW)
-                z = -coord[2]
+                z = -coord[2] + self.zOffset
                 self.myRobot.robot.set_realtime_pose([coord[0], coord[1], z, 0,3.14,0])
             else:
                 print("not activated")

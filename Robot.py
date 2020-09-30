@@ -6,15 +6,17 @@ import csv
 import random
 import json
 
-#host = '172.24.210.207'   
-#host = '127.0.0.1'   
-host = '169.254.178.76'
+#defaultHost = '172.24.210.207'   
+#defaultHost = '127.0.0.1'   
+#defaultHost = '169.254.178.76'
 
 #10.0.0.15
-acc = 0.9
-vel = 0.9
+#acc = 0.9
+#vel = 0.9
+
 class MyRobot(URBasic.urScriptExt.UrScriptExt):
-    def __init__(self):
+    def __init__(self, host):
+        print("Robot connecting to: ", host)
         robotModle = URBasic.robotModel.RobotModel()
         self.robot = URBasic.urScriptExt.UrScriptExt(host=host,robotModel=robotModle)
         self.robot.reset_error()
@@ -24,7 +26,6 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
         self.canvasWidth = 0
         self.canvasHeight = 0
         self.canvasMidpoint = 0
-
         #cropped sizing
         self.canvasCroppedWidth = 0
         self.canvasCroppedHeight = 0
