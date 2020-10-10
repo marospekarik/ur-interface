@@ -22,6 +22,10 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
         self.robot.reset_error()
         self.robot.init_realtime_control()
 
+        #TO DO: SLOW DOWN THIS KILLING MACHINE SOMEHOW
+        #self.robot.init_force_remote()
+        #self.robot.set_force_remote(limits=[0.05, 0.05, 0.05,0.05, 0.05, 0.05])
+
          # The parameters of the calibrated canvas
         self.canvasWidth = 0
         self.canvasHeight = 0

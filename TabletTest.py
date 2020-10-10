@@ -2,6 +2,7 @@ import sys
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
+from scipy.interpolate import interp1d
 
 class TabletSampleWindow(QWidget):
     def __init__(self, parent=None):
@@ -21,6 +22,11 @@ class TabletSampleWindow(QWidget):
     def tabletEvent(self, tabletEvent):
         self.pen_x = tabletEvent.globalX()
         self.pen_y = tabletEvent.globalY()
+        mX = interp1d([0,2560],[0,1920])
+        mY = interp1d([0,1440],[0,1080])
+        self.pen_x = mX(self.pen_x)
+        self.pen_y = mY(self.pen_y)
+        print(mX, mY)
         self.pen_pressure = int(tabletEvent.pressure() * 100)
         if tabletEvent.type() == QTabletEvent.TabletPress:
             self.pen_is_down = True
