@@ -31,9 +31,9 @@ class App(QWidget):
             #print(anims)
 
         # Canvas size
-        self.canvasW = self.settings.value("width") #2560
-        self.canvasH = self.settings.value("height") #1440
-        self.zOffset = float(self.settings.value("zOffset")) or 0 #0.04
+        self.canvasW = self.settings.value("width") or 1920 #2560
+        self.canvasH = self.settings.value("height") or 1080 #1440
+        self.zOffset = float(self.settings.value("zOffset") or 0) #0.04
         self.remotePos = "X: not received | Y: not received"
         self.tabletPos = "X: not received | Y: not received"
 
@@ -169,8 +169,6 @@ class App(QWidget):
         self.rightLayout.addWidget(self.btn_play, 6,3)
         self.rightLayout.addWidget(self.btn_recordTablet, 7,1)
 
-        #self.window_settings = WindowDraw(self)
-
         self.mainLayout.addLayout(self.leftLayout,0,0,1,1)
         self.mainLayout.addLayout(self.rightLayout,0,1,1,1)
         self.setLayout(self.mainLayout)
@@ -219,6 +217,9 @@ class App(QWidget):
         if ok:
             self.label_z_val.setText("{}".format(d))
             self.zOffset = d
+            pose = self.myRobot.robot.get_actual_tcp_pose()
+            adjustedPose = [pose[0],pose[1],pose[2] + d, pose[3], pose[4], pose[5]]
+            self.myRobot.robot.set_realtime_pose(adjustedPose)
             self.settings.setValue("zOffset", d)
 
     def on_click_draw(self, checked):
@@ -230,14 +231,15 @@ class App(QWidget):
     def play(self, progress_callback):
         self.myRobot.robot.end_freedrive_mode()
         self.freeModeOn = False
+        #middle = [0.3,0.3,0.3, 0,3.14,0]
+        #self.myRobot.robot.movej(pose=middle, a=1.2, v=0.9)
+        #if(self.myRobot.robot.get_actual_tcp_pose() == middle):
         self.myRobot.robot.init_realtime_control()
         tabletData = False
-        print(len(self._animations[self.selectedAnimText][0]))
         if(len(self._animations[self.selectedAnimText][0]) == 3):
             tabletData = True
-        
         for pose in self._animations[self.selectedAnimText]:
-            time.sleep(0.1)
+            time.sleep(0.115)
             if(self.isAnimationPlaying == False):
                 return "Interrupted"
             if(tabletData):
@@ -267,16 +269,11 @@ class App(QWidget):
             self.threadpool.start(worker) 
     
     def record(self, progress_callback):
-        #i = 0
-        #self.myRobot.robot.freedrive_mode()
-        #self.freeModeOn = True
         array = []
         while self.isRecording:
-            time.sleep(0.08)
+            time.sleep(0.115)
             pose = self.myRobot.robot.get_actual_tcp_pose()
             array.append(pose.tolist())
-            #print(i)
-            #i += 1
         return array
 
     def on_click_record(self):
@@ -294,12 +291,10 @@ class App(QWidget):
             self.threadpool.start(worker) 
 
     def recordTablet(self, progress_callback):
-        #i = 0
-        #self.myRobot.robot.freedrive_mode()
-        #self.freeModeOn = True
+
         array = []
         while self.isRecording:
-            time.sleep(0.08)
+            time.sleep(0.1)
             pose = [self.window_draw.pen_x, self.window_draw.pen_y, self.window_draw.pen_pressure]
             array.append(pose)
         return array
@@ -323,9 +318,6 @@ class App(QWidget):
         print(item.index().row(), item.text())
         self.selectedAnimIndex = item.index().row()
         self.selectedAnimText = item.text()
-
-        #item = self.animationList.currentItem()
-        #print(str(item.text()), str(self.entry.rowCount()))
     
     def on_click_delete_row(self):
         self.entry.removeRow(self.selectedAnimIndex)
@@ -335,11 +327,8 @@ class App(QWidget):
         self.btn_play.setStyleSheet("background-color : lightgrey")
         self.isAnimationPlaying = False
         self.myRobot.robot.init_realtime_control()
-        #print(s)
     
     def print_record_output(self, data):
-        print(data)
-        # Prompt to save here
         s , ok = QInputDialog().getText(self, "Animation Name",
                                  "Name:")
         if ok:
@@ -348,7 +337,6 @@ class App(QWidget):
             self.entry.appendRow(it)
             with open('animations.json', 'w') as outfile:
                 json.dump(self._animations, outfile)
-        print(s)
         
     def thread_complete(self):
         print("THREAD COMPLETE!")
@@ -369,14 +357,6 @@ class App(QWidget):
                 val = msg.split(',')
                 x = int(val[0])
                 y = int(val[1])
-                # Portrait format
-                # x = int(val[1]) * (self.canvasW/self.canvasH)
-                # y =  -int(val[0]) * (self.canvasH/self.canvasW) + self.canvasH
-                # x = int(x)
-                # y = int(y)
-
-                #y = self.canvasH - y
-
                 newPoint = figureOrientation([x,y],self.canvasW, self.canvasH, 0, mirrorW=True, mirrorH=True)
                 print(newPoint)
                 self.label_remote_pos_val.setText(f"X: {newPoint[0]} | Y: {newPoint[1]}")
@@ -406,6 +386,7 @@ class App(QWidget):
         self.changeColor(self.btn_activate)
         self.activated = not self.activated
         if(self.activated):
+            self.myRobot.robot.init_realtime_control()
             self.myRobot.constructDrawingCanvas()
             self.myRobot.calculateCroppedSizing(self.canvasH, self.canvasW)
         
@@ -417,12 +398,12 @@ class App(QWidget):
         print(msg.topic+" "+str(msg.payload))
 
     def closeEvent(self, event):
-        #print(self._animations)
         with open('animations.json', 'w') as outfile:
             json.dump(self._animations, outfile)
             #print("JSON Saved: ", json.dumps(self._animations))
     
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = App()
+    App()
     sys.exit(app.exec_())
+        
