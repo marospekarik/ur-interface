@@ -1,5 +1,6 @@
 from time import time
 
+
 class App():
     def __init__(self):
         self.prevTime = 0
