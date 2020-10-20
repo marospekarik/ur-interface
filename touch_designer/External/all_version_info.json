@@ -1,0 +1,23 @@
+{
+    "1_21_": {
+        "Author": "Alpha Moonbase",
+        "Date": "2020-01-27",
+        "Notes": "Added adaptive foldertabs.\nFixed an error where external components would try to fill instead of getting the right values from the lunochod container.\nMinor fixes.",
+        "TD Build": "2019.19930",
+        "TD Version": "099"
+    },
+    "1_29_": {
+        "Author": "Alpha Moonbase",
+        "Date": "2020-02-02",
+        "Notes": "Fixed error that occurs when more then one UI element refferences the same external OP and gets deleted.\nFixed and error that when not overriding the target refference id.\nAdded a nonTabable parameter, allowing an UI Element to stay on all tabs not regarding the current selected one.\nYou can now select between fixed tab size and auto tab size.\nAdded a parameter to show custom and built in parameter for elements.",
+        "TD Build": "2019.19930",
+        "TD Version": "099"
+    },
+    "1_43_": {
+        "Author": "Alpha Moonbase",
+        "Date": "2020-02-10",
+        "Notes": "Lots of cosmetics. Gridsize now dependent of actualy window size. \nAlso there was an error regarding Gridsize.\nAnd there was an Error regarding the UI Designer.",
+        "TD Build": "2019.19930",
+        "TD Version": "099"
+    }
+}
