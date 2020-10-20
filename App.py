@@ -39,7 +39,7 @@ class App(QWidget):
 
         self.initUI()
         #self.myRobot = MyRobot(host = '169.254.178.76')
-        self.myRobot = MyRobot(host = '172.24.210.100')
+        self.myRobot = MyRobot(host = '192.168.1.100')
         #self.myRobot = False
         self.activated = False
         self.freeModeOn = False
@@ -217,9 +217,9 @@ class App(QWidget):
         if ok:
             self.label_z_val.setText("{}".format(d))
             self.zOffset = d
-            pose = self.myRobot.robot.get_actual_tcp_pose()
-            adjustedPose = [pose[0],pose[1],pose[2] + d, pose[3], pose[4], pose[5]]
-            self.myRobot.robot.set_realtime_pose(adjustedPose)
+            #pose = self.myRobot.robot.get_actual_tcp_pose()
+            #adjustedPose = [pose[0],pose[1],pose[2] + d, pose[3], pose[4], pose[5]]
+            #self.myRobot.robot.set_realtime_pose(adjustedPose)
             self.settings.setValue("zOffset", d)
 
     def on_click_draw(self, checked):
@@ -357,8 +357,8 @@ class App(QWidget):
                 val = msg.split(',')
                 x = int(val[0])
                 y = int(val[1])
-                newPoint = figureOrientation([x,y],self.canvasW, self.canvasH, 0, mirrorW=True, mirrorH=True)
-                print(newPoint)
+                newPoint = figureOrientation([x,y],self.canvasW, self.canvasH, rotation=1, mirrorW=True, mirrorH=True)
+                #print(x,y, newPoint)
                 self.label_remote_pos_val.setText(f"X: {newPoint[0]} | Y: {newPoint[1]}")
                 coord = self.myRobot.PixelTranslation(newPoint[0], newPoint[1], self.canvasH, self.canvasW)
                 z = -coord[2] + self.zOffset
@@ -394,8 +394,8 @@ class App(QWidget):
     def on_connect(self, client, userdata, flags, rc):
         print("Connected with result code "+str(rc))
 
-    def on_message(self, client, userdata, msg):
-        print(msg.topic+" "+str(msg.payload))
+    #def on_message(self, client, userdata, msg):
+        #print(msg.topic+" "+str(msg.payload))
 
     def closeEvent(self, event):
         with open('animations.json', 'w') as outfile:

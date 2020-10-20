@@ -130,7 +130,6 @@ class MqttClient(QtCore.QObject):
     def on_message(self, mqttc, obj, msg):
         mstr = msg.payload.decode("ascii")
         # print("on_message", mstr, obj, mqttc)
-        #print(mqttc, obj)
         self.messageSignal.emit(mstr)
 
     def on_connect(self, *args):
