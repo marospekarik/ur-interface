@@ -69,11 +69,9 @@ class App(QWidget):
 
 		# Buttons
 		leftLayoutButtons = ["calibrate", "activate", "canvas_size", "z_offset", "free", "draw", "record", "reset_error"]
-		self.buttons = {}
 
 		self.buttons = {}
 		for i, btn in enumerate(leftLayoutButtons):
-			# create button
 			button = QPushButton(btn, self)
 			button.setGeometry(QRect(10, 10, 200, 30))
 			button.setCheckable(True)
@@ -85,7 +83,6 @@ class App(QWidget):
 
 		rightLayoutButtons = ["record", "record_tablet", "play", "delete_row"]
 		for i, btn in enumerate(rightLayoutButtons):
-			# create button
 			button = QPushButton(btn, self)
 			button.setGeometry(QRect(10, 10, 200, 30))
 			button.setCheckable(True)
