@@ -8,6 +8,7 @@ import json
 import ContourExtraction
 import cv2
 import os
+import matplotlib.pyplot as plt
 
 #defaultHost = '172.24.210.207'
 #defaultHost = '127.0.0.1'
@@ -23,7 +24,6 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 		robotModle = URBasic.robotModel.RobotModel()
 		self.robot = URBasic.urScriptExt.UrScriptExt(host=host,robotModel=robotModle)
 		self.robot.reset_error()
-		self.robot.init_realtime_control()
 
 		#TO DO: SLOW DOWN THIS KILLING MACHINE SOMEHOW
 		#self.robot.init_force_remote()
@@ -285,7 +285,7 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 		return
 
 	def RunDrawing(self,image,inputVals=0):
-		imgPath = os.path.dirname( __file__ ) + '/drawings/test.jpg'
+		imgPath = os.path.dirname( __file__ ) + '/drawings/test2.jpg'
 		image = cv2.imread(imgPath, 0)
 		lines = ContourExtraction.JamesContourAlg(image,self.ep_valP[inputVals],self.dist_threshP[inputVals])
 		#Crop the image space to match the input image size
@@ -327,32 +327,48 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 		line_num = 0
 		dist_tresh = 0.01
 		listWpt = []
+
 		prevPoint = [0,0,0]
+
 		for q in range(0,len(lines)):
 			y = lines[q]
 			line_num += 1
 			# print(y)
-			self.ExtraContours.append(y)
+
+			# Jump to another line
+			# self.ExtraContours.append(y)
+
+			switcher = True
+			plotData = []
 
 			if len(y)>0:
 				for eachPoint in y:
-					if (q%3 == 0):
+					if switcher is True:
 						coords = self.PixelTranslation(eachPoint[0], eachPoint[1], image.shape[0], image.shape[1])
 						dist = math.sqrt((coords[0]-prevPoint[0])**2 + (coords[1]-prevPoint[1])**2)
 						if dist > dist_tresh:
 							pose = [coords[0],coords[1],-coords[2] + 0.04,self.endPntPose[3],self.endPntPose[4],self.endPntPose[5]]
-							robotCoordFormat = {'pose': pose, 'a':1.2, 'v':0.25, 't':0, 'r':0}
+							robotCoordFormat = {'pose': pose, 'a':0.5, 'v':0.25, 't':0, 'r':0.004}
 							listWpt.append(robotCoordFormat)
 						prevPoint = coords
 						pose = [coords[0],coords[1],-coords[2],self.endPntPose[3],self.endPntPose[4],self.endPntPose[5]]
-						robotCoordFormat = {'pose': pose, 'a':1.2, 'v':0.25, 't':0, 'r':0}
-
+						robotCoordFormat = {'pose': pose, 'a':0.5, 'v':0.25, 't':0, 'r':0.004}
 						listWpt.append(robotCoordFormat)
+						plotData.append([coords[0],coords[1]])
 
-		print(len(self.ExtraContours))
+						switcher = False
+					else:
+						switcher = True
+			self.plotTrajectory(plotData)
+		
 		self.ExecuteWaypointsPath(listWpt)
 		#self.rob.movel(self.initHoverPos, acc=self.a, vel=self.v, wait=True)
 		return
+	
+	def plotTrajectory(self, eachPoint):
+		arr = np.array(eachPoint)
+		plt.plot(arr[:,1],arr[:,0])
+		plt.show()
 
 	def DrawContour(self,pts,validate=False):
 		self.ExecuteSinglePath(

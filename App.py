@@ -39,7 +39,7 @@ class App(QWidget):
 		self.tabletPos = "X: not received | Y: not received"
 
 		#self.myRobot = MyRobot(host = '172.16.22.2')
-		self.myRobot = MyRobot(host = '169.254.178.76')
+		self.myRobot = MyRobot(host = '192.168.1.100')
 		self.myRobot.SetZvals(float(self.settings.value("z_offset") or 0)) #0.04)
 		self.initUI()
 
@@ -169,7 +169,6 @@ class App(QWidget):
 	def on_click_reset_error(self):
 		self.changeColor(self.buttons["free_mode"])
 		self.myRobot.robot.reset_error()
-		self.myRobot.robot.init_realtime_control()
 
 	def on_click_toggle_hover(self):
 		currentPose = self.myRobot.robot.get_actual_tcp_pose()
@@ -177,7 +176,7 @@ class App(QWidget):
 		if self.isHovering:
 			zVal = self.myRobot.zOffset
 		self.isHovering = not self.isHovering
-		nextPose = [currentPose[0], currentPose[1], self.myRobot.initHoverPos[2] + zVal, self.myRobot.endPntPose[3], self.myRobot.endPntPose[4], self.myRobot.endPntPose[5]]
+		nextPose = [currentPose[0], currentPose[1], -self.myRobot.initHoverPos[2] + zVal, self.myRobot.endPntPose[3], self.myRobot.endPntPose[4], self.myRobot.endPntPose[5]]
 		self.myRobot.ExecuteSinglePath(nextPose)
 
 	def on_click_canvas_size(self):
@@ -210,6 +209,7 @@ class App(QWidget):
 		if self.window_draw.isVisible():
 			self.window_draw.hide()
 		else:
+			self.myRobot.robot.init_realtime_control_pose()
 			self.window_draw.show()
 
 	def play(self, progress_callback):
@@ -221,10 +221,16 @@ class App(QWidget):
 		#self.myRobot.robot.movej(pose=middle, a=1.2, v=0.9)
 		#if(self.myRobot.robot.get_actual_tcp_pose() == middle):
 
-		self.myRobot.robot.init_realtime_control()
 		tabletData = False
+
 		if(len(self._animations[self.selectedAnimText][0]) == 3):
 			tabletData = True
+		
+		if tabletData is True:
+			self.myRobot.robot.init_realtime_control_pose()
+		else:
+			self.myRobot.robot.init_realtime_control_joint()
+
 		for pose in self._animations[self.selectedAnimText]:
 			time.sleep(0.115)
 			if(self.isAnimationPlaying == False):
@@ -235,9 +241,10 @@ class App(QWidget):
 				z = -coord[2] + self.myRobot.zOffset
 				if penPressure < 15:
 					z = -coord[2] + 0.04
+				
 				self.myRobot.robot.set_realtime_pose([coord[0], coord[1], z, 0,3.14,0])
 			else:
-				self.myRobot.robot.set_realtime_pose(pose)
+				self.myRobot.robot.set_realtime_joint(pose)
 		return "Animation Done."
 
 	def on_click_play_animation(self):
@@ -259,7 +266,8 @@ class App(QWidget):
 		array = []
 		while self.isRecording:
 			time.sleep(0.115)
-			pose = self.myRobot.robot.get_actual_tcp_pose()
+			pose = self.myRobot.robot.get_actual_joint_positions()
+			# pose = self.myRobot.robot.get_actual_tcp_pose()
 			array.append(pose.tolist())
 		return array
 
@@ -312,7 +320,6 @@ class App(QWidget):
 	def print_play_output(self, s):
 		self.buttons["play_animation"].setStyleSheet("background-color : lightgrey")
 		self.isAnimationPlaying = False
-		self.myRobot.robot.init_realtime_control()
 
 	def print_record_output(self, data):
 		s , ok = QInputDialog().getText(self, "Animation Name",
@@ -366,14 +373,12 @@ class App(QWidget):
 		self.myRobot.Calibrate(2)
 		QMessageBox.question(self, 'Bottom Right','Press Enter to confirm Bottom Right', QMessageBox.Ok, QMessageBox.Ok)
 		self.myRobot.Calibrate(3, [self.canvasH, self.canvasW])
-		self.myRobot.robot.init_realtime_control()
 
 	@pyqtSlot()
 	def on_click_activate(self):
 		self.changeColor(self.buttons["activate"])
 		self.activated = not self.activated
 		if(self.activated):
-			self.myRobot.robot.init_realtime_control()
 			self.myRobot.constructDrawingCanvas()
 			self.myRobot.calculateCroppedSizing(self.canvasH, self.canvasW)
 

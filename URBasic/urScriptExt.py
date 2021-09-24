@@ -103,7 +103,7 @@ class UrScriptExt(URBasic.urScript.UrScript):
             self.robotConnector.DashboardClient.wait_dbs()
 
             # ADDED: If there was a safety stop -> reupload the realtime control program
-            self.init_realtime_control()
+            # self.init_realtime_control()
 
         # return self.get_robot_status()['PowerOn'] & (not self.get_safety_status()['StoppedDueToSafety'])
         return self.robotConnector.RobotModel.RobotStatus().PowerOn and not self.robotConnector.RobotModel.SafetyStatus().StoppedDueToSafety
@@ -335,7 +335,7 @@ end
 
             return False
 
-    def init_realtime_control(self):
+    def init_realtime_control_joint(self):
         '''
         The realtime control mode enables continuous updates to a servoj program which is
         initialized by this function. This way no new program has to be sent to the robot
@@ -349,6 +349,60 @@ end
         Status (bool): Status, True if successfully initialized.
         '''
 
+        if not self.robotConnector.RTDE.isRunning():
+            print("RTDE needs to be running to use realtime control")
+            self.__logger.error('RTDE needs to be running to use realtime control')
+            return False
+
+        # get current tcp pos
+        init_pose = self.get_actual_joint_positions()
+
+        self.robotConnector.RTDE.setData('input_double_register_0', init_pose[0])
+        self.robotConnector.RTDE.setData('input_double_register_1', init_pose[1])
+        self.robotConnector.RTDE.setData('input_double_register_2', init_pose[2])
+        self.robotConnector.RTDE.setData('input_double_register_3', init_pose[3])
+        self.robotConnector.RTDE.setData('input_double_register_4', init_pose[4])
+        self.robotConnector.RTDE.setData('input_double_register_5', init_pose[5])
+
+        self.robotConnector.RTDE.sendData()
+
+        prog = '''def realtime_control():
+    
+    
+    while (True):
+        
+        new_pose = p[read_input_float_register(0),
+                    read_input_float_register(1),
+                    read_input_float_register(2),
+                    read_input_float_register(3),
+                    read_input_float_register(4),
+                    read_input_float_register(5)]
+        
+        servoj([new_pose[0],new_pose[1], new_pose[2], new_pose[3], new_pose[4], new_pose[5]], t=2.5, gain=150)
+            
+        sync()
+    end
+end
+'''
+        # , t=0.1
+
+        self.robotConnector.RealTimeClient.SendProgram(prog.format(**locals()))
+        self.robotConnector.RobotModel.realtimeControlFlag = True
+
+    def init_realtime_control_pose(self):
+        '''
+        The realtime control mode enables continuous updates to a servoj program which is
+        initialized by this function. This way no new program has to be sent to the robot
+        and the robot can perform a smooth trajectory.
+        Sending new servoj commands is done by utilizing RTDE of this library
+        
+        Parameters:
+        sample_time: time of one sample, standard is 8ms as this is the thread-cycle time of UR
+        
+        Return Value:
+        Status (bool): Status, True if successfully initialized.
+        '''
+        print("guten")
         if not self.robotConnector.RTDE.isRunning():
             print("RTDE needs to be running to use realtime control")
             self.__logger.error('RTDE needs to be running to use realtime control')
@@ -378,14 +432,12 @@ end
                     read_input_float_register(4),
                     read_input_float_register(5)]
            
-        servoj(get_inverse_kin(new_pose), t=.4, gain=150)
+        servoj(get_inverse_kin(new_pose), t=2.5, gain=150)
             
         sync()
     end
 end
 '''
-        # , t=0.1
-
         self.robotConnector.RealTimeClient.SendProgram(prog.format(**locals()))
         self.robotConnector.RobotModel.realtimeControlFlag = True
 
@@ -400,7 +452,40 @@ end
 
         if not self.robotConnector.RobotModel.realtimeControlFlag:
             print("Realtime control not initialized!")
-            self.init_realtime_control()
+            self.init_realtime_control_pose()
+            print("Realtime control initialized!")
+
+        if self.robotConnector.RTDE.isRunning() and self.robotConnector.RobotModel.realtimeControlFlag:
+            self.robotConnector.RTDE.setData('input_double_register_0', pose[0])
+            self.robotConnector.RTDE.setData('input_double_register_1', pose[1])
+            self.robotConnector.RTDE.setData('input_double_register_2', pose[2])
+            self.robotConnector.RTDE.setData('input_double_register_3', pose[3])
+            self.robotConnector.RTDE.setData('input_double_register_4', pose[4])
+            self.robotConnector.RTDE.setData('input_double_register_5', pose[5])
+            self.robotConnector.RTDE.sendData()
+            return True
+        else:
+            if not self.robotConnector.RobotModel.realtimeControlFlag:
+                print("AFS")
+                self.__logger.warning('Realtime Remote Control not initialized')
+            else:
+                print(":(")
+                self.__logger.warning('RTDE is not running')
+
+            return False
+    
+    def set_realtime_joint(self, pose):
+        """
+        Update/Set realtime_joint after sample_time seconds.
+
+        Parameters
+        pose: pose to transition to in sample_time seconds
+        sample_time: time to take to perform servoj to next pose. 0.008 = thread cycle time of Universal Robot
+        """
+
+        if not self.robotConnector.RobotModel.realtimeControlFlag:
+            print("Realtime control not initialized!")
+            self.init_realtime_control_joint()
             print("Realtime control initialized!")
 
         if self.robotConnector.RTDE.isRunning() and self.robotConnector.RobotModel.realtimeControlFlag:

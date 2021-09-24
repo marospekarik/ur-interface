@@ -65,7 +65,7 @@ class WindowDraw(QWidget):
             
             #self.mainWindow.tabletPos = f"X: {self.pen_x} | Y: {self.pen_y}"
             coord = self.mainWindow.myRobot.PixelTranslation(self.pen_x, self.pen_y, self.mainWindow.canvasH, self.mainWindow.canvasW)
-            z = -coord[2] + self.mainWindow.zOffset
+            z = -coord[2] + self.mainWindow.myRobot.zOffset
             if self.pen_pressure < 15:
                 z = -coord[2] + 0.04
             self.mainWindow.myRobot.robot.set_realtime_pose([coord[0], coord[1], z, 0,3.14,0])
