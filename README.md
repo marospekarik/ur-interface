@@ -7,9 +7,9 @@ This repo extend the UR capabilities to mimick real-time drawing using XY coordi
 # Installation
 Tested on Python 3.7 and 3.9
 
-pip3 install PyQt5 scipy numpy paho-mqtt six
+pip3 install opencv-python PyQt5 scipy numpy paho-mqtt six
 # Run
-1. In App.py change host IP to your robot/simulator IP address. 
+1. In App.py change host IP to your robot/simulator IP address.
 
 # Todo:
 1. ~~Add install script~~

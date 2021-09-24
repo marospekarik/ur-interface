@@ -8,8 +8,10 @@ import time
 import scipy.interpolate
 import math
 import operator
+import cv2
+import os
 
-import URBasic
+# import URBasic
 from MqttClient import MqttClient
 from Robot import MyRobot
 from Worker import Worker, WorkerSignals
@@ -20,8 +22,8 @@ class App(QWidget):
 	def __init__(self):
 		super().__init__()
 		self.title = 'RoboUI'
-		self.wWidth = 600
-		self.wHeight = 400
+		self.wWidth = 800
+		self.wHeight = 600
 
 		self.settings = QSettings("RoboApp", "App")
 		self._animations = {}
@@ -33,13 +35,14 @@ class App(QWidget):
 		# Canvas size
 		self.canvasW = self.settings.value("width") or 1920 #2560
 		self.canvasH = self.settings.value("height") or 1080 #1440
-		self.z_offset = float(self.settings.value("z_offset") or 0) #0.04
 		self.remotePos = "X: not received | Y: not received"
 		self.tabletPos = "X: not received | Y: not received"
 
+		#self.myRobot = MyRobot(host = '172.16.22.2')
+		self.myRobot = MyRobot(host = '169.254.178.76')
+		self.myRobot.SetZvals(float(self.settings.value("z_offset") or 0)) #0.04)
 		self.initUI()
-		#self.myRobot = MyRobot(host = '169.254.178.76')
-		self.myRobot = MyRobot(host = '192.168.1.100')
+
 		#self.myRobot = False
 		self.activated = False
 		self.freeModeOn = False
@@ -47,6 +50,7 @@ class App(QWidget):
 		self.isRecording = False
 		self.isRecordingTablet = False
 		self.isAnimationPlaying = False
+		self.isHovering = False
 
 		# Initialize MQTT
 		# self.client = MqttClient(self)
@@ -68,11 +72,12 @@ class App(QWidget):
 		self.rightLayout = QGridLayout()
 
 		# Buttons
-		leftLayoutButtons = ["calibrate", "activate", "canvas_size", "z_offset", "free", "draw", "record", "reset_error"]
+		leftLayoutButtons = ["calibrate", "activate", "canvas_size", "z_offset", "free_mode", "draw",  "reset_error", "draw_test", "toggle_hover"]
 
 		self.buttons = {}
-		for i, btn in enumerate(leftLayoutButtons):
-			button = QPushButton(btn, self)
+		for btn in leftLayoutButtons:
+			text = btn.replace("_", " ").title()
+			button = QPushButton(text, self)
 			button.setGeometry(QRect(10, 10, 200, 30))
 			button.setCheckable(True)
 
@@ -81,9 +86,11 @@ class App(QWidget):
 			button.clicked.connect(getattr(self, "on_click_" + btn))
 			self.buttons[btn] = button
 
-		rightLayoutButtons = ["record", "record_tablet", "play", "delete_row"]
+
+		rightLayoutButtons = ["record_animation", "record_tablet", "play_animation", "delete_row"]
 		for i, btn in enumerate(rightLayoutButtons):
-			button = QPushButton(btn, self)
+			text = btn.replace("_", " ").title()
+			button = QPushButton(text, self)
 			button.setGeometry(QRect(10, 10, 200, 30))
 			button.setCheckable(True)
 			button.setStyleSheet("background-color : lightgrey")
@@ -105,8 +112,8 @@ class App(QWidget):
 		self.label_w_val = QLabel(str(self.canvasW))
 		self.label_h = QLabel('Height:')
 		self.label_h_val = QLabel(str(self.canvasH))
-		self.label_z = QLabel('Z Offset:')
-		self.label_z_val = QLabel(str(self.z_offset))
+		self.label_z = QLabel('Z-Offset (cm):')
+		self.label_z_val = QLabel(str(self.myRobot.zOffset))
 		self.label_remote_pos = QLabel('Remote pos:')
 		self.label_remote_pos_val = QLabel(str(self.remotePos))
 		self.rightLayout.addWidget(self.label_w, 2, 0)
@@ -117,15 +124,17 @@ class App(QWidget):
 		self.rightLayout.addWidget(self.label_z_val, 4, 1)
 		self.rightLayout.addWidget(self.label_remote_pos, 0, 0)
 		self.rightLayout.addWidget(self.label_remote_pos_val, 0, 1)
-		self.rightLayout.addWidget(self.animationList, 5,5)
+		self.rightLayout.addWidget(self.animationList, 5,3,1,2)
 		self.rightLayout.addWidget(self.buttons["delete_row"], 6,5)
-		self.rightLayout.addWidget(self.buttons["record"],6,4)
-		self.rightLayout.addWidget(self.buttons["play"], 6,3)
-		self.rightLayout.addWidget(self.buttons["record_tablet"], 7,1)
+		self.rightLayout.addWidget(self.buttons["record_animation"],6,4)
+		self.rightLayout.addWidget(self.buttons["play_animation"], 6,3)
+		self.rightLayout.addWidget(self.buttons["record_tablet"], 6,2)
 
 		self.buttons["draw"].setCheckable(False)
 		self.buttons["delete_row"].setCheckable(False)
 		self.buttons["z_offset"].setCheckable(False)
+		self.buttons["reset_error"].setCheckable(False)
+		self.buttons["canvas_size"].setCheckable(False)
 
 
 		self.mainLayout.addLayout(self.leftLayout,0,0,1,1)
@@ -141,8 +150,15 @@ class App(QWidget):
 			btn.setStyleSheet("background-color : lightgrey")
 			return False
 
-	def on_click_free(self):
-		self.changeColor(self.buttons["freeMode"])
+	def on_click_draw_test(self):
+		dirname = os.path.dirname(__file__)
+		filename = os.path.join(dirname, 'drawings/robosign.png')
+
+		self.myRobot.RunDrawingWp(cv2.imread(filename))
+
+
+	def on_click_free_mode(self):
+		self.changeColor(self.buttons["free_mode"])
 		if self.freeModeOn:
 			self.myRobot.robot.end_freedrive_mode()
 			self.freeModeOn = False
@@ -151,9 +167,18 @@ class App(QWidget):
 			self.freeModeOn = True
 
 	def on_click_reset_error(self):
-		self.changeColor(self.buttons["freeMode"])
+		self.changeColor(self.buttons["free_mode"])
 		self.myRobot.robot.reset_error()
 		self.myRobot.robot.init_realtime_control()
+
+	def on_click_toggle_hover(self):
+		currentPose = self.myRobot.robot.get_actual_tcp_pose()
+		zVal = self.myRobot.zHover
+		if self.isHovering:
+			zVal = self.myRobot.zOffset
+		self.isHovering = not self.isHovering
+		nextPose = [currentPose[0], currentPose[1], self.myRobot.initHoverPos[2] + zVal, self.myRobot.endPntPose[3], self.myRobot.endPntPose[4], self.myRobot.endPntPose[5]]
+		self.myRobot.ExecuteSinglePath(nextPose)
 
 	def on_click_canvas_size(self):
 		i , ok = QInputDialog().getInt(self, "Set Width",
@@ -172,14 +197,14 @@ class App(QWidget):
 
 	def on_click_z_offset(self):
 		d , ok = QInputDialog().getDouble(self, "Set Z Offset",
-								 "Z:", decimals=4)
+								 "Z:", decimals=2)
 		if ok:
 			self.label_z_val.setText("{}".format(d))
-			self.z_offset = d
+			self.myRobot.SetZvals(d, division=100)
 			#pose = self.myRobot.robot.get_actual_tcp_pose()
 			#adjustedPose = [pose[0],pose[1],pose[2] + d, pose[3], pose[4], pose[5]]
 			#self.myRobot.robot.set_realtime_pose(adjustedPose)
-			self.settings.setValue("zOffset", d)
+			self.settings.setValue("z_offset", d)
 
 	def on_click_draw(self, checked):
 		if self.window_draw.isVisible():
@@ -190,9 +215,12 @@ class App(QWidget):
 	def play(self, progress_callback):
 		self.myRobot.robot.end_freedrive_mode()
 		self.freeModeOn = False
+
+		# Move to middle before starting
 		#middle = [0.3,0.3,0.3, 0,3.14,0]
 		#self.myRobot.robot.movej(pose=middle, a=1.2, v=0.9)
 		#if(self.myRobot.robot.get_actual_tcp_pose() == middle):
+
 		self.myRobot.robot.init_realtime_control()
 		tabletData = False
 		if(len(self._animations[self.selectedAnimText][0]) == 3):
@@ -204,7 +232,7 @@ class App(QWidget):
 			if(tabletData):
 				penPressure = pose[2]
 				coord = self.myRobot.PixelTranslation(pose[0], pose[1], self.canvasH, self.canvasW)
-				z = -coord[2] + self.z_offset
+				z = -coord[2] + self.myRobot.zOffset
 				if penPressure < 15:
 					z = -coord[2] + 0.04
 				self.myRobot.robot.set_realtime_pose([coord[0], coord[1], z, 0,3.14,0])
@@ -212,13 +240,13 @@ class App(QWidget):
 				self.myRobot.robot.set_realtime_pose(pose)
 		return "Animation Done."
 
-	def on_click_play(self):
+	def on_click_play_animation(self):
 		if self.isAnimationPlaying:
-			self.buttons["play"].setStyleSheet("background-color : lightgrey")
+			self.buttons["play_animation"].setStyleSheet("background-color : lightgrey")
 			self.isAnimationPlaying = False
 		else:
 			self.isAnimationPlaying = True
-			self.buttons["play"].setStyleSheet("background-color : lightblue")
+			self.buttons["play_animation"].setStyleSheet("background-color : lightblue")
 			worker = Worker(self.play) # Any other args, kwargs are passed to the run function
 			worker.signals.result.connect(self.print_play_output)
 			#worker.signals.finished.connect(self.thread_complete)
@@ -235,11 +263,11 @@ class App(QWidget):
 			array.append(pose.tolist())
 		return array
 
-	def on_click_record(self):
-		self.buttons["record"].setStyleSheet("background-color : lightblue")
+	def on_click_record_animation(self):
+		self.buttons["record_animation"].setStyleSheet("background-color : lightblue")
 		if(self.isRecording):
 			self.isRecording = False
-			self.buttons["record"].setStyleSheet("background-color : lightgrey")
+			self.buttons["record_animation"].setStyleSheet("background-color : lightgrey")
 		else:
 			self.isRecording = True
 			worker = Worker(self.record) # Any other args, kwargs are passed to the run function
@@ -249,8 +277,7 @@ class App(QWidget):
 			# Execute
 			self.threadpool.start(worker)
 
-	def recordTablet(self, progress_callback):
-
+	def recordTablet(self):
 		array = []
 		while self.isRecording:
 			time.sleep(0.1)
@@ -283,7 +310,7 @@ class App(QWidget):
 		del self._animations[self.selectedAnimText]
 
 	def print_play_output(self, s):
-		self.buttons["play"].setStyleSheet("background-color : lightgrey")
+		self.buttons["play_animation"].setStyleSheet("background-color : lightgrey")
 		self.isAnimationPlaying = False
 		self.myRobot.robot.init_realtime_control()
 
@@ -321,7 +348,7 @@ class App(QWidget):
 				#print(x,y, newPoint)
 				self.label_remote_pos_val.setText(f"X: {newPoint[0]} | Y: {newPoint[1]}")
 				coord = self.myRobot.PixelTranslation(newPoint[0], newPoint[1], self.canvasH, self.canvasW)
-				z = -coord[2] + self.z_offset
+				z = -coord[2] + self.myRobot.zOffset
 				self.myRobot.robot.set_realtime_pose([coord[0], coord[1], z, 0,3.14,0])
 			else:
 				print("not activated")

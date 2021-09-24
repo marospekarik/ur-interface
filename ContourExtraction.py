@@ -56,8 +56,8 @@ def JamesContourAlgff(img):
         lstcont.append([pts[1][0], pts[0][0]])
         pts.remove(pts[1][0])
         pts.remove(pts[0][0])
-        print lstcont
-    print pts
+        print(lstcont)
+    print(pts)
     return pts
 
 
@@ -71,7 +71,7 @@ def JamesContourAlg(img, ep_val=0, dist_thresh=0):
     #  cv2.imshow('',gray)
     # cv2.waitKey(200)
     # Code to find contours
-    print gray.shape
+    print(gray.shape)
     # cnts, _ = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     try:
