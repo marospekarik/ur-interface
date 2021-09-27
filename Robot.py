@@ -344,27 +344,27 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 			if len(y)>0:
 				for eachPoint in y:
 					if switcher is True:
-						coords = self.PixelTranslation(eachPoint[0], eachPoint[1], image.shape[0], image.shape[1])
-						dist = math.sqrt((coords[0]-prevPoint[0])**2 + (coords[1]-prevPoint[1])**2)
+						x, y, z  = self.PixelTranslation(eachPoint[0], eachPoint[1], image.shape[0], image.shape[1])
+						dist = math.sqrt((x-prevPoint[0])**2 + (y-prevPoint[1])**2)
+
 						if dist > dist_tresh:
-							pose = [coords[0],coords[1],-coords[2] + 0.04,self.endPntPose[3],self.endPntPose[4],self.endPntPose[5]]
+							pose = [x,y,-z + 0.04,self.endPntPose[3],self.endPntPose[4],self.endPntPose[5]]
 							robotCoordFormat = {'pose': pose, 'a':0.5, 'v':0.25, 't':0, 'r':0.004}
 							listWpt.append(robotCoordFormat)
-						prevPoint = coords
-						pose = [coords[0],coords[1],-coords[2],self.endPntPose[3],self.endPntPose[4],self.endPntPose[5]]
+						prevPoint = [x,y,z]
+						pose = [x,y,-z,self.endPntPose[3],self.endPntPose[4],self.endPntPose[5]]
 						robotCoordFormat = {'pose': pose, 'a':0.5, 'v':0.25, 't':0, 'r':0.004}
 						listWpt.append(robotCoordFormat)
-						plotData.append([coords[0],coords[1]])
+						plotData.append([x,y])
 
 						switcher = False
 					else:
 						switcher = True
 			self.plotTrajectory(plotData)
-		
 		self.ExecuteWaypointsPath(listWpt)
 		#self.rob.movel(self.initHoverPos, acc=self.a, vel=self.v, wait=True)
 		return
-	
+
 	def plotTrajectory(self, eachPoint):
 		arr = np.array(eachPoint)
 		plt.plot(arr[:,1],arr[:,0])
