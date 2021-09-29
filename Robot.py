@@ -50,7 +50,7 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 		self.zHover = 0
 
 		# Save each recorded calibrated point into this class
-		with open('calibration_points.json') as json_file:
+		with open('./data/calibration_points.json') as json_file:
 			points = json.load(json_file)
 			self.bottomLeftPoint = points["bottomLeft"]
 			self.topLeftPoint = points["topLeft"]
@@ -285,7 +285,7 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 				"topRight": self.topRightPoint,
 				"bottomRight": self.bottomRightPoint
 			}
-			with open('calibration_points.json', 'w') as outfile:
+			with open('./data/calibration_points.json', 'w') as outfile:
 				json.dump(data, outfile)
 				print("JSON Saved: ", json.dumps(data))
 

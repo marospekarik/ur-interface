@@ -31,7 +31,7 @@ class App(QWidget):
 			if file.endswith(".jpg"):
 				self._drawings.update({file.split(".")[0]: os.path.join("drawings", file)})
 
-		with open('animations.json') as json_file:
+		with open('./data/animations.json') as json_file:
 			anims = json.load(json_file)
 			self._animations = anims
 			#print(anims)
@@ -365,7 +365,7 @@ class App(QWidget):
 			self._animations[s] = data
 			it = QStandardItem(s)
 			self.animEntry.appendRow(it)
-			with open('animations.json', 'w') as outfile:
+			with open('./data/animations.json', 'w') as outfile:
 				json.dump(self._animations, outfile)
 
 	def thread_complete(self):
@@ -427,7 +427,7 @@ class App(QWidget):
 		#print(msg.topic+" "+str(msg.payload))
 
 	def closeEvent(self, event):
-		with open('animations.json', 'w') as outfile:
+		with open('./data/animations.json', 'w') as outfile:
 			json.dump(self._animations, outfile)
 			#print("JSON Saved: ", json.dumps(self._animations))
 
