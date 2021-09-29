@@ -8,11 +8,10 @@ import time
 import scipy.interpolate
 import math
 import operator
-import cv2
 import os
 
 # import URBasic
-from MqttClient import MqttClient
+# from MqttClient import MqttClient
 from Robot import MyRobot
 from Worker import Worker, WorkerSignals
 from TabletWindow import WindowDraw
@@ -26,7 +25,12 @@ class App(QWidget):
 		self.wHeight = 600
 
 		self.settings = QSettings("RoboApp", "App")
-		self._animations = {}
+		self._drawings = {}
+
+		for file in os.listdir("drawings"):
+			if file.endswith(".jpg"):
+				self._drawings.update({file.split(".")[0]: os.path.join("drawings", file)})
+
 		with open('animations.json') as json_file:
 			anims = json.load(json_file)
 			self._animations = anims
@@ -38,15 +42,18 @@ class App(QWidget):
 		self.remotePos = "X: not received | Y: not received"
 		self.tabletPos = "X: not received | Y: not received"
 
-		#self.myRobot = MyRobot(host = '172.16.22.2')
-		self.myRobot = MyRobot(host = '192.168.1.100')
+		self.myRobot = MyRobot(app=self, host = '172.16.22.2')
+		# self.myRobot = MyRobot(host = '192.168.1.100')
 		self.myRobot.SetZvals(float(self.settings.value("z_offset") or 0)) #0.04)
 		self.initUI()
 
 		#self.myRobot = False
 		self.activated = False
 		self.freeModeOn = False
+
 		self.selectedAnimIndex = 0
+		self.selectedFileIndex = 0
+
 		self.isRecording = False
 		self.isRecordingTablet = False
 		self.isAnimationPlaying = False
@@ -72,7 +79,7 @@ class App(QWidget):
 		self.rightLayout = QGridLayout()
 
 		# Buttons
-		leftLayoutButtons = ["calibrate", "activate", "canvas_size", "z_offset", "free_mode", "draw",  "reset_error", "draw_test", "toggle_hover"]
+		leftLayoutButtons = ["calibrate", "activate", "canvas_size", "z_offset", "free_mode", "draw",  "reset_error", "toggle_hover", "stop_robot"]
 
 		self.buttons = {}
 		for btn in leftLayoutButtons:
@@ -87,7 +94,7 @@ class App(QWidget):
 			self.buttons[btn] = button
 
 
-		rightLayoutButtons = ["record_animation", "record_tablet", "play_animation", "delete_row"]
+		rightLayoutButtons = ["draw_test", "record_animation", "record_tablet", "play_animation", "delete_row"]
 		for i, btn in enumerate(rightLayoutButtons):
 			text = btn.replace("_", " ").title()
 			button = QPushButton(text, self)
@@ -97,17 +104,30 @@ class App(QWidget):
 			button.clicked.connect(getattr(self, "on_click_" + btn))
 			self.buttons[btn] = button
 
-		self.entry = QStandardItemModel()
+		self.image_frame = QLabel()
+
+		self.animEntry = QStandardItemModel()
 		self.animationList = QListView()
-		self.animationList.setModel(self.entry)
+		self.animationList.setModel(self.animEntry)
+
+		self.fileEntry = QStandardItemModel()
+		self.fileList = QListView()
+		self.fileList.setModel(self.fileEntry)
 
 		for key in self._animations.keys():
 			it = QStandardItem(key)
-			self.entry.appendRow(it)
+			self.animEntry.appendRow(it)
+
+		# iterate through files in folder
+		for key in self._drawings.keys():
+			it = QStandardItem(key)
+			self.fileEntry.appendRow(it)
 
 		self.animationList.clicked[QModelIndex].connect(self.on_anim_listview_clicked)
+		self.fileList.clicked[QModelIndex].connect(self.on_file_listview_clicked)
+		self.fileList.setCurrentIndex(self.fileEntry.index(0, 0))
+		self.on_file_listview_clicked(self.fileEntry.index(0, 0))
 
-		#Display text
 		self.label_w = QLabel("Width:")
 		self.label_w_val = QLabel(str(self.canvasW))
 		self.label_h = QLabel('Height:')
@@ -124,7 +144,10 @@ class App(QWidget):
 		self.rightLayout.addWidget(self.label_z_val, 4, 1)
 		self.rightLayout.addWidget(self.label_remote_pos, 0, 0)
 		self.rightLayout.addWidget(self.label_remote_pos_val, 0, 1)
-		self.rightLayout.addWidget(self.animationList, 5,3,1,2)
+		self.rightLayout.addWidget(self.animationList, 5,4,1,2)
+		self.rightLayout.addWidget(self.fileList, 5,2,1,2)
+		self.rightLayout.addWidget(self.image_frame, 7,0,1,2)
+		self.rightLayout.addWidget(self.buttons["draw_test"], 6,1)
 		self.rightLayout.addWidget(self.buttons["delete_row"], 6,5)
 		self.rightLayout.addWidget(self.buttons["record_animation"],6,4)
 		self.rightLayout.addWidget(self.buttons["play_animation"], 6,3)
@@ -135,7 +158,7 @@ class App(QWidget):
 		self.buttons["z_offset"].setCheckable(False)
 		self.buttons["reset_error"].setCheckable(False)
 		self.buttons["canvas_size"].setCheckable(False)
-
+		self.buttons["stop_robot"].setCheckable(False)
 
 		self.mainLayout.addLayout(self.leftLayout,0,0,1,1)
 		self.mainLayout.addLayout(self.rightLayout,0,1,1,1)
@@ -151,11 +174,11 @@ class App(QWidget):
 			return False
 
 	def on_click_draw_test(self):
-		dirname = os.path.dirname(__file__)
-		filename = os.path.join(dirname, 'drawings/robosign.png')
+		path = "/" + self._drawings[self.fileList.currentIndex().data()]
+		self.myRobot.RunDrawingWpt(path)
 
-		self.myRobot.RunDrawingWp(cv2.imread(filename))
-
+	def on_click_stop_robot(self):
+		self.myRobot.robot.stopl()
 
 	def on_click_free_mode(self):
 		self.changeColor(self.buttons["free_mode"])
@@ -225,7 +248,7 @@ class App(QWidget):
 
 		if(len(self._animations[self.selectedAnimText][0]) == 3):
 			tabletData = True
-		
+
 		if tabletData is True:
 			self.myRobot.robot.init_realtime_control_pose()
 		else:
@@ -241,7 +264,7 @@ class App(QWidget):
 				z = -coord[2] + self.myRobot.zOffset
 				if penPressure < 15:
 					z = -coord[2] + 0.04
-				
+
 				self.myRobot.robot.set_realtime_pose([coord[0], coord[1], z, 0,3.14,0])
 			else:
 				self.myRobot.robot.set_realtime_joint(pose)
@@ -308,13 +331,27 @@ class App(QWidget):
 			self.threadpool.start(worker)
 
 	def on_anim_listview_clicked(self, index):
-		item = self.entry.itemFromIndex(index)
-		print(item.index().row(), item.text())
+		item = self.animEntry.itemFromIndex(index)
 		self.selectedAnimIndex = item.index().row()
 		self.selectedAnimText = item.text()
 
+
+	def on_file_listview_clicked(self, index):
+		item = self.fileEntry.itemFromIndex(index)
+		self.selectedFileIndex = item.index().row()
+		self.selectedFileText = item.text()
+
+		imgPath = "/" + self._drawings[self.fileList.currentIndex().data()]
+		cvImg = self.myRobot.GetDrawingPreview(imgPath)
+		im = QImage(cvImg.data, cvImg.shape[1], cvImg.shape[0], cvImg.strides[0], QImage.Format_RGB888).rgbSwapped()
+		# self.image_frame.setPixmap(QPixmap.fromImage(im))
+		pix = QPixmap.fromImage(im)
+		pix = pix.scaled(600, 400, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+		self.image_frame.setPixmap(pix)
+
+
 	def on_click_delete_row(self):
-		self.entry.removeRow(self.selectedAnimIndex)
+		self.animEntry.removeRow(self.selectedAnimIndex)
 		del self._animations[self.selectedAnimText]
 
 	def print_play_output(self, s):
@@ -327,7 +364,7 @@ class App(QWidget):
 		if ok:
 			self._animations[s] = data
 			it = QStandardItem(s)
-			self.entry.appendRow(it)
+			self.animEntry.appendRow(it)
 			with open('animations.json', 'w') as outfile:
 				json.dump(self._animations, outfile)
 

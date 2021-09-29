@@ -9,6 +9,11 @@ import ContourExtraction
 import cv2
 import os
 import matplotlib.pyplot as plt
+from Worker import Worker, WorkerSignals
+
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 
 #defaultHost = '172.24.210.207'
 #defaultHost = '127.0.0.1'
@@ -19,7 +24,7 @@ import matplotlib.pyplot as plt
 #vel = 0.9
 
 class MyRobot(URBasic.urScriptExt.UrScriptExt):
-	def __init__(self, host):
+	def __init__(self, host, app):
 		print("Robot connecting to: ", host)
 		robotModle = URBasic.robotModel.RobotModel()
 		self.robot = URBasic.urScriptExt.UrScriptExt(host=host,robotModel=robotModle)
@@ -33,6 +38,7 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 		self.a = 0.3
 		self.v = 0.3
 
+		self.ui = app
 		 # The parameters of the calibrated canvas
 		self.canvasWidth = 0
 		self.canvasHeight = 0
@@ -73,6 +79,8 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 		self.endPntPose = [-0.14959202618776724, -0.6892203786569369, 0.45944469344501543,
                            -3.141369099840455, -0.023765232731069934, -0.018604100882098216]
 		self.initHoverPos = [0,0,0]
+
+		self.listWpt = []
 
 		return
 
@@ -284,100 +292,64 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 		# setMax_Min(self, self.bottomLeftPoint, self.topLeftPoint, self.topRightPoint, self.bottomRightPoint)
 		return
 
-	def RunDrawing(self,image,inputVals=0):
-		imgPath = os.path.dirname( __file__ ) + '/drawings/test2.jpg'
-		image = cv2.imread(imgPath, 0)
-		lines = ContourExtraction.JamesContourAlg(image,self.ep_valP[inputVals],self.dist_threshP[inputVals])
-		#Crop the image space to match the input image size
-		self.calculateCroppedSizing(image.shape[0], image.shape[1])
-		line_num = 0
-		for q in range(0,len(lines)):
-			y = lines[q]
-			line_num += 1
-			# print(y)
-			self.ExtraContours.append(y)
-			if len(y)>0:
-				#pts = self.convertToTDspaceList(y, [image.shape[0], image.shape[1]])
-				pts = []
-				for eachPoint in y:
-					#print 'point is'
-					#print eachPoint
-					coords = self.PixelTranslation(eachPoint[0], eachPoint[1], image.shape[0], image.shape[1])
-					# print(pts)
-					robotCoordFormat = [coords[0],coords[1],-coords[2],self.endPntPose[3],self.endPntPose[4],self.endPntPose[5]]
-					pts.append(robotCoordFormat)
-					#pts.append([coords[0],coords[1],coords[2],self.endPntPose[3],self.endPntPose[4],self.endPntPose[5]])
-				self.DrawContour(pts)
-				print("drawing contour")
-			self.ExtraContours.remove(y)
-		while len(self.ExtraContours)>0:
-			print(self.ExtraContours)
-			self.DrawContour(self.ExtraContours[0])
-			self.ExtraContours.remove(self.ExtraContours[0])
-		print ('Completed Contour Construction', line_num)
-		#self.rob.movel(self.initHoverPos, acc=self.a, vel=self.v, wait=True)
-		return
+	def GetDrawingPreview(self, imgPath):
+		path = os.path.dirname( __file__ ) + imgPath
+		image = cv2.imread(path, 0)
+		[lines, img] = ContourExtraction.JamesContourAlg(image,self.ep_valP[0],self.dist_threshP[0])
+		return img
 
-	def RunDrawingWp(self,image,inputVals=0):
-		imgPath = os.path.dirname( __file__ ) + '/drawings/test2.jpg'
-		image = cv2.imread(imgPath, 0)
-		lines = ContourExtraction.JamesContourAlg(image,self.ep_valP[inputVals],self.dist_threshP[inputVals])
-		#Crop the image space to match the input image size
-		self.calculateCroppedSizing(image.shape[0], image.shape[1])
-		line_num = 0
-		dist_tresh = 0.01
+	def RunDrawingWpt(self,imgPath,inputVals=0):
 		listWpt = []
 
-		prevPoint = [0,0,0]
+		def addNewWpt(eachPoint, newCountour = False):
+			x, y, z  = self.PixelTranslation(eachPoint[0], eachPoint[1], image.shape[0], image.shape[1])
+			offset = 0.04 if newCountour else 0
+			pose = [x,y,-z + offset,self.endPntPose[3],self.endPntPose[4],self.endPntPose[5]]
+			robotCoordFormat = {'pose': pose, 'a':0.5, 'v':0.25, 't':0, 'r':0.004}
+			listWpt.append(robotCoordFormat)
+			return [x,y]
+
+		path = os.path.dirname( __file__ ) + imgPath
+		image = cv2.imread(path, 0)
+		[lines, img] = ContourExtraction.JamesContourAlg(image,self.ep_valP[inputVals],self.dist_threshP[inputVals])
+
+		#Crop the image space to match the input image size
+		self.calculateCroppedSizing(image.shape[0], image.shape[1])
+		line_num = 0
 
 		for q in range(0,len(lines)):
-			y = lines[q]
+			line = lines[q]
 			line_num += 1
-			# print(y)
-
+			downsampledLine = np.array(line)[::3]
 			# Jump to another line
-			# self.ExtraContours.append(y)
-
-			switcher = True
+			addNewWpt([downsampledLine[0,0], downsampledLine[0,1]], True)
 			plotData = []
-
-			if len(y)>0:
-				for eachPoint in y:
-					if switcher is True:
-						x, y, z  = self.PixelTranslation(eachPoint[0], eachPoint[1], image.shape[0], image.shape[1])
-						dist = math.sqrt((x-prevPoint[0])**2 + (y-prevPoint[1])**2)
-
-						if dist > dist_tresh:
-							pose = [x,y,-z + 0.04,self.endPntPose[3],self.endPntPose[4],self.endPntPose[5]]
-							robotCoordFormat = {'pose': pose, 'a':0.5, 'v':0.25, 't':0, 'r':0.004}
-							listWpt.append(robotCoordFormat)
-						prevPoint = [x,y,z]
-						pose = [x,y,-z,self.endPntPose[3],self.endPntPose[4],self.endPntPose[5]]
-						robotCoordFormat = {'pose': pose, 'a':0.5, 'v':0.25, 't':0, 'r':0.004}
-						listWpt.append(robotCoordFormat)
-						plotData.append([x,y])
-
-						switcher = False
-					else:
-						switcher = True
+			if len(downsampledLine)>0:
+				for eachPoint in downsampledLine:
+					[plotX, plotY] = addNewWpt(eachPoint)
+					plotData.append([plotX,plotY])
 			self.plotTrajectory(plotData)
-		self.ExecuteWaypointsPath(listWpt)
+
+		plt.show()
+		self.wpts = listWpt
+		self.draw_waypoints_worker()
 		#self.rob.movel(self.initHoverPos, acc=self.a, vel=self.v, wait=True)
 		return
 
 	def plotTrajectory(self, eachPoint):
 		arr = np.array(eachPoint)
 		plt.plot(arr[:,1],arr[:,0])
-		plt.show()
 
 	def DrawContour(self,pts,validate=False):
 		self.ExecuteSinglePath(
 			[pts[0][0], pts[0][1], self.zHover, self.endPntPose[3], self.endPntPose[4], self.endPntPose[5]])
 		return
 
-	def ExecuteWaypointsPath(self, pt):
-		print("Waypoints count:", len(pt))
-		self.robot.movel_waypoints(pt)
+	def ExecuteWaypointsPath(self, progress_callback):
+		wpts = self.wpts
+		print("Waypoints count:", len(wpts))
+
+		self.robot.movel_waypoints(wpts)
 		return
 
 	def ExecuteSinglePath(self, pt):
@@ -385,14 +357,20 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 		self.DelayWhileExecuting()
 		return
 
-	def DelayWhileExecuting(self):
-		# time.sleep(0.25)
-		# while self.rob.is_program_running() and self.Interruption == False and self.StopCommand == False:
-		# 	time.sleep(0.01)
-		# if self.Interruption:
-		# 	self.InteruptedPosition = self.rob.getl()
-		# 	self.rob.stopl(acc=0.8)
-		# 	self.RunRetreat()
-		# elif self.StopCommand==True:
+	def draw_waypoints_worker(self):
+		worker = Worker(self.ExecuteWaypointsPath) # Any other args, kwargs are passed to the run function
+		worker.signals.result.connect(self.print_result)
+		worker.signals.finished.connect(self.draw_waypoints_thread_complete)
+		worker.signals.progress.connect(self.ui.progress_fn)
+		# Execute
+		self.ui.threadpool.start(worker)
 
-		return
+	def print_result(self, result):
+		print("%s" % (result))
+
+	def draw_waypoints_thread_complete(self):
+		print("–––––––––––––––––––––––––––––")
+		print("RESET to init cropped sizing:")
+		self.constructDrawingCanvas()
+		self.calculateCroppedSizing(self.ui.canvasH, self.ui.canvasW)
+
