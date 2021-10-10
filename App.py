@@ -42,7 +42,7 @@ class App(QWidget):
 		self.remotePos = "X: not received | Y: not received"
 		self.tabletPos = "X: not received | Y: not received"
 
-		self.myRobot = MyRobot(app=self, host = '172.16.22.2')
+		self.myRobot = MyRobot(app=self, host = '172.16.22.3')
 		# self.myRobot = MyRobot(host = '192.168.1.100')
 		self.myRobot.SetZvals(float(self.settings.value("z_offset") or 0)) #0.04)
 		self.initUI()
@@ -225,7 +225,6 @@ class App(QWidget):
 			self.myRobot.SetZvals(d, division=100)
 			#pose = self.myRobot.robot.get_actual_tcp_pose()
 			#adjustedPose = [pose[0],pose[1],pose[2] + d, pose[3], pose[4], pose[5]]
-			#self.myRobot.robot.set_realtime_pose(adjustedPose)
 			self.settings.setValue("z_offset", d)
 
 	def on_click_draw(self, checked):
@@ -239,19 +238,19 @@ class App(QWidget):
 		self.myRobot.robot.end_freedrive_mode()
 		self.freeModeOn = False
 
-		# Move to middle before starting
-		#middle = [0.3,0.3,0.3, 0,3.14,0]
-		#self.myRobot.robot.movej(pose=middle, a=1.2, v=0.9)
-		#if(self.myRobot.robot.get_actual_tcp_pose() == middle):
-
 		tabletData = False
 
 		if(len(self._animations[self.selectedAnimText][0]) == 3):
 			tabletData = True
 
 		if tabletData is True:
+			[initX,initY] = self._animations[self.selectedAnimText][0]
+			targetPose = self.myRobot.PixelTranslation(initX, initY, self.canvasH, self.canvasW)
+			self.myRobot.robot.movel(pose=targetPose, a=0.3, v=0.4)
 			self.myRobot.robot.init_realtime_control_pose()
 		else:
+			jointPose = self._animations[self.selectedAnimText][0]
+			self.myRobot.robot.movej(q=jointPose, a=0.4, v=0.4, wait=True)
 			self.myRobot.robot.init_realtime_control_joint()
 
 		for pose in self._animations[self.selectedAnimText]:
@@ -409,7 +408,7 @@ class App(QWidget):
 		QMessageBox.question(self, 'Top Right','Press Enter to confirm Top Right', QMessageBox.Ok, QMessageBox.Ok)
 		self.myRobot.Calibrate(2)
 		QMessageBox.question(self, 'Bottom Right','Press Enter to confirm Bottom Right', QMessageBox.Ok, QMessageBox.Ok)
-		self.myRobot.Calibrate(3, [self.canvasH, self.canvasW])
+		self.myRobot.Calibrate(3, size = [self.canvasH, self.canvasW])
 
 	@pyqtSlot()
 	def on_click_activate(self):
