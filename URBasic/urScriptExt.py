@@ -378,7 +378,7 @@ end
                     read_input_float_register(4),
                     read_input_float_register(5)]
         
-        servoj([new_pose[0],new_pose[1], new_pose[2], new_pose[3], new_pose[4], new_pose[5]], t=2.5, gain=150)
+        servoj([new_pose[0],new_pose[1], new_pose[2], new_pose[3], new_pose[4], new_pose[5]], t=.4, gain=150)
             
         sync()
     end
@@ -402,7 +402,6 @@ end
         Return Value:
         Status (bool): Status, True if successfully initialized.
         '''
-        print("guten")
         if not self.robotConnector.RTDE.isRunning():
             print("RTDE needs to be running to use realtime control")
             self.__logger.error('RTDE needs to be running to use realtime control')
@@ -432,7 +431,7 @@ end
                     read_input_float_register(4),
                     read_input_float_register(5)]
            
-        servoj(get_inverse_kin(new_pose), t=2.5, gain=150)
+        servoj(get_inverse_kin(new_pose), t=.4, gain=150)
             
         sync()
     end
