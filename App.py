@@ -244,14 +244,16 @@ class App(QWidget):
 			tabletData = True
 
 		if tabletData is True:
-			[initX,initY] = self._animations[self.selectedAnimText][0]
-			targetPose = self.myRobot.PixelTranslation(initX, initY, self.canvasH, self.canvasW)
-			self.myRobot.robot.movel(pose=targetPose, a=0.3, v=0.4)
+			[initX,initY, hover] = self._animations[self.selectedAnimText][0]
+			poseIn3D = self.myRobot.PixelTranslation(initX, initY, self.canvasH, self.canvasW)
+			targetPose = [poseIn3D[0], poseIn3D[1], poseIn3D[2], 0,3.14,0]
+			self.myRobot.robot.movel(pose=targetPose, a=0.1, v=0.1, wait=True)
 			self.myRobot.robot.init_realtime_control_pose()
 		else:
 			jointPose = self._animations[self.selectedAnimText][0]
-			self.myRobot.robot.movej(q=jointPose, a=0.4, v=0.4, wait=True)
+			self.myRobot.robot.movej(q=jointPose, a=0.1, v=0.1, wait=True)
 			self.myRobot.robot.init_realtime_control_joint()
+
 
 		for pose in self._animations[self.selectedAnimText]:
 			time.sleep(0.115)
@@ -307,7 +309,7 @@ class App(QWidget):
 			# Execute
 			self.threadpool.start(worker)
 
-	def recordTablet(self):
+	def recordTablet(self, progress_callback):
 		array = []
 		while self.isRecording:
 			time.sleep(0.1)
