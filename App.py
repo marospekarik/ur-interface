@@ -42,9 +42,9 @@ class App(QWidget):
 		self.remotePos = "X: not received | Y: not received"
 		self.tabletPos = "X: not received | Y: not received"
 
-		self.myRobot = MyRobot(app=self, host = '172.16.22.2')
+		self.myRobot = MyRobot(app=self, host = '192.168.1.100')
 		# self.myRobot = MyRobot(host = '192.168.1.100')
-		self.myRobot.SetZvals(float(self.settings.value("z_offset") or 0)) #0.04)
+		self.myRobot.SetZvals(float(self.settings.value("z_offset") or 0), division=100) #0.04)
 		self.initUI()
 
 		#self.myRobot = False

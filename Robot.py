@@ -303,7 +303,7 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 
 		def addNewWpt(eachPoint, newCountour = False):
 			x, y, z  = self.PixelTranslation(eachPoint[0], eachPoint[1], image.shape[0], image.shape[1])
-			offset = 0.04 if newCountour else 0
+			offset = self.zHover if newCountour else self.zOffset
 			pose = [x,y,-z + offset,self.endPntPose[3],self.endPntPose[4],self.endPntPose[5]]
 			robotCoordFormat = {'pose': pose, 'a':0.5, 'v':0.25, 't':0, 'r':0.004}
 			listWpt.append(robotCoordFormat)
@@ -354,7 +354,7 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 
 	def ExecuteSinglePath(self, pt):
 		self.robot.movel(pt, a=self.a, v=self.v, wait=False)
-		self.DelayWhileExecuting()
+		# self.DelayWhileExecuting()
 		return
 
 	def draw_waypoints_worker(self):
