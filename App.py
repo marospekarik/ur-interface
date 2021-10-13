@@ -258,9 +258,9 @@ class App(QWidget):
 			self.myRobot.robot.movej(q=jointPose, a=0.1, v=0.1, wait=True)
 			self.myRobot.robot.init_realtime_control_joint()
 
-
+		# Interupt this if i press stop
 		for pose in self._animations[self.selectedAnimText]:
-			time.sleep(0.115)
+			time.sleep(0.2)
 			if(self.isAnimationPlaying == False):
 				return "Interrupted"
 			if(tabletData):
