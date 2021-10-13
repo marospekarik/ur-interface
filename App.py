@@ -243,6 +243,7 @@ class App(QWidget):
 		self.freeModeOn = False
 
 		tabletData = False
+		initTargetPose = 0
 
 		if(len(self._animations[self.selectedAnimText][0]) == 3):
 			tabletData = True
@@ -250,15 +251,18 @@ class App(QWidget):
 		if tabletData is True:
 			[initX,initY, hover] = self._animations[self.selectedAnimText][0]
 			poseIn3D = self.myRobot.PixelTranslation(initX, initY, self.canvasH, self.canvasW)
-			targetPose = [poseIn3D[0], poseIn3D[1], poseIn3D[2], 0,3.14,0]
-			self.myRobot.robot.movel(pose=targetPose, a=0.1, v=0.1, wait=True)
+			initTargetPose = [poseIn3D[0], poseIn3D[1], poseIn3D[2], 0,3.14,0]
+			self.myRobot.robot.movel(pose=initTargetPose, a=0.25, v=0.25, wait=True)
 			self.myRobot.robot.init_realtime_control_pose()
 		else:
-			jointPose = self._animations[self.selectedAnimText][0]
-			self.myRobot.robot.movej(q=jointPose, a=0.1, v=0.1, wait=True)
+			initTargetPose = self._animations[self.selectedAnimText][0]
+			self.myRobot.robot.movej(q=initTargetPose, a=0.25, v=0.25, wait=True)
 			self.myRobot.robot.init_realtime_control_joint()
 
-		# Interupt this if i press stop
+		currentPose = self.myRobot.robot.get_actual_tcp_pose()
+		if(currentPose != initTargetPose or self.isAnimationPlaying == False):
+			return "Not at the same coordinate. Stoping..."
+
 		for pose in self._animations[self.selectedAnimText]:
 			time.sleep(0.2)
 			if(self.isAnimationPlaying == False):
@@ -295,7 +299,6 @@ class App(QWidget):
 		while self.isRecording:
 			time.sleep(0.115)
 			pose = self.myRobot.robot.get_actual_joint_positions()
-			# pose = self.myRobot.robot.get_actual_tcp_pose()
 			array.append(pose.tolist())
 		return array
 
@@ -358,6 +361,9 @@ class App(QWidget):
 	def on_click_delete_row(self):
 		self.animEntry.removeRow(self.selectedAnimIndex)
 		del self._animations[self.selectedAnimText]
+		if(self.selectedAnimText != 0):
+			self.selectedAnimIndex -= 1
+			self.selectedAnimText = self.animEntry.item(self.selectedAnimIndex).text()
 
 	def print_play_output(self, s):
 		self.buttons["play_animation"].setStyleSheet("background-color : lightgrey")
