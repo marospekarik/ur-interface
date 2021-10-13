@@ -76,8 +76,7 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 		self.zOffset = 0
 		self.ep_valP=[0,0]
 		self.dist_threshP=[0,0]
-		self.endPntPose = [-0.14959202618776724, -0.6892203786569369, 0.45944469344501543,
-                           -3.141369099840455, -0.023765232731069934, -0.018604100882098216]
+		self.toolRotation = [-3.141369099840455, -0.023765232731069934, -0.018604100882098216]
 		self.initHoverPos = [0,0,0]
 
 		self.listWpt = []
@@ -300,12 +299,15 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 
 	def RunDrawingWpt(self,imgPath,inputVals=0):
 		listWpt = []
+		maxAcc = 0.2
+		maxVel = 0.2
+		initTargetPose = [0.07033279538154602, -1.5860512892352503, -1.3597491423236292, -1.7119396368609827, -4.690964881573812, -4.965108100567953]
 
 		def addNewWpt(eachPoint, newCountour = False):
 			x, y, z  = self.PixelTranslation(eachPoint[0], eachPoint[1], image.shape[0], image.shape[1])
 			offset = self.zHover if newCountour else self.zOffset
-			pose = [x,y,-z + offset,self.endPntPose[3],self.endPntPose[4],self.endPntPose[5]]
-			robotCoordFormat = {'pose': pose, 'a':0.5, 'v':0.25, 't':0, 'r':0.004}
+			pose = [x,y,-z + offset,self.toolRotation[0],self.toolRotation[1],self.toolRotation[2]]
+			robotCoordFormat = {'pose': pose, 'a':maxAcc, 'v':maxVel, 't':0, 'r':0.004}
 			listWpt.append(robotCoordFormat)
 			return [x,y]
 
@@ -322,7 +324,7 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 			line_num += 1
 			downsampledLine = np.array(line)[::3]
 			# Jump to another line
-			addNewWpt([downsampledLine[0,0], downsampledLine[0,1]], True)
+			addNewWpt([downsampledLine[0,0], downsampledLine[0,1]], newCountour=True)
 			plotData = []
 			if len(downsampledLine)>0:
 				for eachPoint in downsampledLine:
@@ -332,29 +334,27 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 
 		plt.show()
 		self.wpts = listWpt
+		# initTargetPose = listWpt[0]["pose"]
+		self.ExecuteSingleLinearJoint(initTargetPose, a=0.2, v=0.4)
 		self.draw_waypoints_worker()
-		#self.rob.movel(self.initHoverPos, acc=self.a, vel=self.v, wait=True)
 		return
 
 	def plotTrajectory(self, eachPoint):
 		arr = np.array(eachPoint)
 		plt.plot(arr[:,1],arr[:,0])
 
-	def DrawContour(self,pts,validate=False):
-		self.ExecuteSinglePath(
-			[pts[0][0], pts[0][1], self.zHover, self.endPntPose[3], self.endPntPose[4], self.endPntPose[5]])
-		return
-
 	def ExecuteWaypointsPath(self, progress_callback):
 		wpts = self.wpts
 		print("Waypoints count:", len(wpts))
-
 		self.robot.movel_waypoints(wpts)
 		return
 
-	def ExecuteSinglePath(self, pt):
-		self.robot.movel(pt, a=self.a, v=self.v, wait=False)
-		# self.DelayWhileExecuting()
+	def ExecuteSingleLinear(self, pt, a=0.2, v=0.2, wait=True):
+		self.robot.movel(pt, a=a, v=v, wait=wait)
+		return
+
+	def ExecuteSingleLinearJoint(self, pt, a=0.75, v=0.5, wait=True):
+		self.robot.movej(q=pt, a=a, v=v, wait=True)
 		return
 
 	def draw_waypoints_worker(self):
@@ -373,4 +373,40 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 		print("RESET to init cropped sizing:")
 		self.constructDrawingCanvas()
 		self.calculateCroppedSizing(self.ui.canvasH, self.ui.canvasW)
+
+	def playAnimation(self, animationPose):
+	
+		canvasH = self.ui.canvasH
+		canvasW = self.ui.canvasW
+		tabletData = False
+		initTargetPose = 0
+
+		if(len(animationPose[0]) == 3):
+			tabletData = True
+
+		if tabletData is True:
+			[initX,initY, hover] = animationPose[0]
+			poseIn3D = self.PixelTranslation(initX, initY, canvasH, canvasW)
+			initTargetPose = [poseIn3D[0], poseIn3D[1], poseIn3D[2], 0,3.14,0]
+			self.ExecuteSingleLinear(initTargetPose)
+			self.robot.init_realtime_control_pose()
+		else:
+			initTargetPose = animationPose[0]
+			self.ExecuteSingleLinearJoint(initTargetPose)
+			self.robot.init_realtime_control_joint()
+
+		for pose in animationPose:
+			time.sleep(0.2)
+			if(self.ui.isAnimationPlaying == False):
+				return "Interrupted"
+			if(tabletData):
+				penPressure = pose[2]
+				coord = self.PixelTranslation(pose[0], pose[1], canvasH, canvasW)
+				z = -coord[2] + self.zOffset
+				if penPressure < 15:
+					z = -coord[2] + 0.04
+				self.robot.set_realtime_pose([coord[0], coord[1], z, 0,3.14,0])
+			else:
+				self.robot.set_realtime_joint(pose)
+		return "Animation Done."
 
