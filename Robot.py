@@ -78,6 +78,7 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 		self.dist_threshP=[0,0]
 		self.toolRotation = [-3.141369099840455, -0.023765232731069934, -0.018604100882098216]
 		self.initHoverPos = [0,0,0]
+		self.initTargetDrawPose = [0.30981093645095825, -1.9617646376239222, -2.1000917593585413, -0.6482990423785608, -4.705995742474691, -4.402732316647665]
 
 		self.listWpt = []
 
@@ -300,7 +301,7 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 	def RunDrawingWpt(self,imgPath,inputVals=0):
 		listWpt = []
 		maxAcc = 0.2
-		maxVel = 0.2
+		maxVel = 0.3
 		initTargetPose = [0.07033279538154602, -1.5860512892352503, -1.3597491423236292, -1.7119396368609827, -4.690964881573812, -4.965108100567953]
 
 		def addNewWpt(eachPoint, newCountour = False):
@@ -335,7 +336,7 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 		plt.show()
 		self.wpts = listWpt
 		# initTargetPose = listWpt[0]["pose"]
-		self.ExecuteSingleLinearJoint(initTargetPose, a=0.2, v=0.4)
+		self.ExecuteSingleLinearJoint(self.initTargetDrawPose, a=0.2, v=0.4)
 		self.draw_waypoints_worker()
 		return
 
@@ -373,9 +374,9 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 		print("RESET to init cropped sizing:")
 		self.constructDrawingCanvas()
 		self.calculateCroppedSizing(self.ui.canvasH, self.ui.canvasW)
+		# Exacute contemplate animation
 
 	def playAnimation(self, animationPose):
-	
 		canvasH = self.ui.canvasH
 		canvasW = self.ui.canvasW
 		tabletData = False
@@ -387,8 +388,11 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 		if tabletData is True:
 			[initX,initY, hover] = animationPose[0]
 			poseIn3D = self.PixelTranslation(initX, initY, canvasH, canvasW)
-			initTargetPose = [poseIn3D[0], poseIn3D[1], poseIn3D[2], 0,3.14,0]
-			self.ExecuteSingleLinear(initTargetPose)
+			# initTargetPose = [poseIn3D[0], poseIn3D[1], poseIn3D[2], 0,3.14,0]
+
+			# self.ExecuteSingleLinear(initTargetPose)
+			self.ExecuteSingleLinearJoint(self.initTargetDrawPose, a=0.2, v=0.4)
+
 			self.robot.init_realtime_control_pose()
 		else:
 			initTargetPose = animationPose[0]
@@ -396,7 +400,7 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 			self.robot.init_realtime_control_joint()
 
 		for pose in animationPose:
-			time.sleep(0.2)
+			time.sleep(0.185)
 			if(self.ui.isAnimationPlaying == False):
 				return "Interrupted"
 			if(tabletData):

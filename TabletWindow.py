@@ -30,6 +30,11 @@ class WindowDraw(QWidget):
         self.setLayout(layout)
         self.mainWindow = mainWindow
 
+    def keyPressEvent(self, e):
+        if e.key() == Qt.Key_R:
+            # Start recording animation
+            self.mainWindow.on_click_record_tablet()
+
     def tabletEvent(self, tabletEvent):
         #https://docs.huihoo.com/pyqt/pyqt/html/qtabletevent.html
         if self.mainWindow.activated:
