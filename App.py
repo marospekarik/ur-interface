@@ -9,7 +9,13 @@ import scipy.interpolate
 import math
 import operator
 import os
-import random 
+import random
+
+import argparse
+import random
+import time
+
+from pythonosc import udp_client
 
 # import URBasic
 # from MqttClient import MqttClient
@@ -46,7 +52,7 @@ class App(QWidget):
 		self.remotePos = "X: not received | Y: not received"
 		self.tabletPos = "X: not received | Y: not received"
 
-		self.myRobot = MyRobot(app=self, host = '192.168.1.100')
+		self.myRobot = MyRobot(app=self, host = '172.16.22.3')
 		# self.myRobot = MyRobot(host = '192.168.1.100')
 		self.myRobot.SetZvals(float(self.settings.value("z_offset") or 0), division=100) #0.04)
 		self.initUI()
@@ -72,8 +78,15 @@ class App(QWidget):
 		# self.client.connectToHost()
 
 		self.threadpool = QThreadPool()
-
 		self.window_draw = WindowDraw(self,app)
+		self.initOscServer()
+
+	def initOscServer(self):
+		parser = argparse.ArgumentParser()
+		parser.add_argument("--ip", default="127.0.0.1", help="The ip of the OSC server")
+		parser.add_argument("--port", type=int, default=6448, help="The port the OSC server is listening on")
+		args = parser.parse_args()
+		self.osc_client = udp_client.SimpleUDPClient(args.ip, args.port)
 
 
 	def initUI(self):
@@ -227,6 +240,24 @@ class App(QWidget):
 		else:
 			self.myRobot.robot.freedrive_mode()
 			self.freeModeOn = True
+			# Start sending current joint positions of the robot over OSC
+			self.on_click_start_osc()
+
+
+	def start_osc_sender(self, progress_callback):
+		print("Starting OSC sender")
+		while(self.freeModeOn):
+			self.osc_client.send_message("/wek/inputs", self.myRobot.robot.get_actual_joint_positions())
+			time.sleep(0.1)
+
+	def print_osc_output(self):
+		return "done"
+
+	def on_click_start_osc(self):
+		worker = Worker(self.start_osc_sender)
+		worker.signals.result.connect(self.print_play_output)
+		worker.signals.progress.connect(self.progress_fn)
+		self.threadpool.start(worker)
 
 	def on_click_reset_error(self):
 		self.changeColor(self.buttons["free_mode"])
@@ -396,7 +427,7 @@ class App(QWidget):
 			self.selectedDrawText = self.drawEntry.item(self.selectedDrawIndex).text()
 		else:
 			self.selectedDrawIndex = 0
-		
+
 
 	def print_play_output(self, s):
 		self.manageAnimButtons(enable=True)
@@ -411,7 +442,7 @@ class App(QWidget):
 			self.animEntry.appendRow(it)
 			with open('./data/animations.json', 'w') as outfile:
 				json.dump(self._animations, outfile)
-	
+
 	def print_record_output_tablet(self, data):
 		s , ok = QInputDialog().getText(self, "Drawing Name",
 								 "Name:")
@@ -483,7 +514,7 @@ class App(QWidget):
 	def closeEvent(self, event):
 		with open('./data/animations.json', 'w') as outfile:
 			json.dump(self._animations, outfile)
-		
+
 		with open('./data/drawings.json', 'w') as outfile:
 			json.dump(self._drawings, outfile)
 
@@ -507,7 +538,7 @@ class App(QWidget):
 		self.manageAnimButtons(enable=False)
 		self.selectedAnimText = "Greeting"
 		self.on_click_play_animation()
-	
+
 	def on_click_draw_random(self):
 		self.manageAnimButtons(enable=False)
 		randomKey = list(self._drawings)[random.randint(0,len(self._drawings)-1)]
@@ -519,7 +550,7 @@ class App(QWidget):
 
 		self.selectedAnimText = "ContemplateLatest"
 		self.on_click_play_animation()
-	
+
 	def on_click_pen(self):
 		self.manageAnimButtons(enable=False)
 		self.selectedAnimText = "PenPoint"
@@ -529,7 +560,7 @@ class App(QWidget):
 		self.manageAnimButtons(enable=False)
 		self.selectedAnimText = "yes"
 		self.on_click_play_animation()
-	
+
 	def on_click_no(self):
 		self.manageAnimButtons(enable=False)
 		self.selectedAnimText = "no"

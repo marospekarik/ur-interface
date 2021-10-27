@@ -411,6 +411,7 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 					z = -coord[2] + 0.04
 				self.robot.set_realtime_pose([coord[0], coord[1], z, 0,3.14,0])
 			else:
+				self.ui.osc_client.send_message("/wek/inputs", pose)
 				self.robot.set_realtime_joint(pose)
 		return "Animation Done."
 
