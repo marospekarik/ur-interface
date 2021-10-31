@@ -52,7 +52,7 @@ class App(QWidget):
 		self.remotePos = "X: not received | Y: not received"
 		self.tabletPos = "X: not received | Y: not received"
 
-		self.myRobot = MyRobot(app=self, host = '172.16.22.3')
+		self.myRobot = MyRobot(app=self, host = '192.168.1.100')
 		# self.myRobot = MyRobot(host = '192.168.1.100')
 		self.myRobot.SetZvals(float(self.settings.value("z_offset") or 0), division=100) #0.04)
 		self.initUI()
@@ -247,7 +247,8 @@ class App(QWidget):
 	def start_osc_sender(self, progress_callback):
 		print("Starting OSC sender")
 		while(self.freeModeOn):
-			self.osc_client.send_message("/wek/inputs", self.myRobot.robot.get_actual_joint_positions())
+			pos = self.myRobot.robot.get_actual_joint_positions()
+			self.osc_client.send_message("/wek/inputs", pos)
 			time.sleep(0.1)
 
 	def print_osc_output(self):
