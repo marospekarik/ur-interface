@@ -9,7 +9,7 @@ import scipy.interpolate
 import math
 import operator
 import os
-import random 
+import random
 
 # import URBasic
 # from MqttClient import MqttClient
@@ -17,6 +17,8 @@ from Robot import MyRobot
 from Worker import Worker, WorkerSignals
 from TabletWindow import WindowDraw
 from Utils import figureOrientation
+import OpenCvThinning as Thinning
+
 
 class App(QWidget):
 	def __init__(self):
@@ -46,7 +48,9 @@ class App(QWidget):
 		self.remotePos = "X: not received | Y: not received"
 		self.tabletPos = "X: not received | Y: not received"
 
-		self.myRobot = MyRobot(app=self, host = '192.168.1.100')
+		# self.myRobot = MyRobot(app=self, host = '192.168.1.100')
+		self.myRobot = MyRobot(app=self, host = '172.16.22.3')
+
 		# self.myRobot = MyRobot(host = '192.168.1.100')
 		self.myRobot.SetZvals(float(self.settings.value("z_offset") or 0), division=100) #0.04)
 		self.initUI()
@@ -87,7 +91,7 @@ class App(QWidget):
 
 		# Buttons
 		self.disabledButtons = ["play_animation", "play_drawing", "sit", "greet", "draw_random", "contemplate", "pen", "yes", "no"]
-		leftLayoutButtons = ["calibrate", "activate", "canvas_size", "z_offset", "free_mode", "draw",  "reset_error", "toggle_hover", "stop_robot",  "sit", "greet", "draw_random", "contemplate", "pen", "yes", "no"]
+		leftLayoutButtons = ["calibrate", "activate", "canvas_size", "z_offset", "free_mode", "draw",  "reset_error", "toggle_hover", "stop_robot",  "sit", "greet", "draw_random", "contemplate", "pen", "yes", "no", "calibrate_cam", "cam_draw"]
 
 		self.buttons = {}
 		for btn in leftLayoutButtons:
@@ -218,6 +222,23 @@ class App(QWidget):
 
 	def on_click_stop_robot(self):
 		self.myRobot.robot.stopl()
+
+	def calib_cam(self):
+		Thinning.CalibrateHomography()
+
+	def on_click_cam_draw(self):
+		[lstcont, temp_img] = Thinning.Thinning(Thinning.BackgroundSubtraction())
+		print(lstcont, temp_img)
+		self.robot.RunDrawWptPure(lstcont, temp_img)
+
+	def on_click_calibrate_cam(self):
+		self.calib_cam()
+		worker = Worker(self.calib_cam) # Any other args, kwargs are passed to the run function
+		worker.signals.result.connect(self.print_play_output)
+		worker.signals.progress.connect(self.progress_fn)
+
+		# Execute
+		self.threadpool.start(worker)
 
 	def on_click_free_mode(self):
 		self.changeColor(self.buttons["free_mode"])
@@ -396,7 +417,7 @@ class App(QWidget):
 			self.selectedDrawText = self.drawEntry.item(self.selectedDrawIndex).text()
 		else:
 			self.selectedDrawIndex = 0
-		
+
 
 	def print_play_output(self, s):
 		self.manageAnimButtons(enable=True)
@@ -411,7 +432,7 @@ class App(QWidget):
 			self.animEntry.appendRow(it)
 			with open('./data/animations.json', 'w') as outfile:
 				json.dump(self._animations, outfile)
-	
+
 	def print_record_output_tablet(self, data):
 		s , ok = QInputDialog().getText(self, "Drawing Name",
 								 "Name:")
@@ -483,7 +504,7 @@ class App(QWidget):
 	def closeEvent(self, event):
 		with open('./data/animations.json', 'w') as outfile:
 			json.dump(self._animations, outfile)
-		
+
 		with open('./data/drawings.json', 'w') as outfile:
 			json.dump(self._drawings, outfile)
 
@@ -507,7 +528,7 @@ class App(QWidget):
 		self.manageAnimButtons(enable=False)
 		self.selectedAnimText = "Greeting"
 		self.on_click_play_animation()
-	
+
 	def on_click_draw_random(self):
 		self.manageAnimButtons(enable=False)
 		randomKey = list(self._drawings)[random.randint(0,len(self._drawings)-1)]
@@ -519,7 +540,7 @@ class App(QWidget):
 
 		self.selectedAnimText = "ContemplateLatest"
 		self.on_click_play_animation()
-	
+
 	def on_click_pen(self):
 		self.manageAnimButtons(enable=False)
 		self.selectedAnimText = "PenPoint"
@@ -529,7 +550,7 @@ class App(QWidget):
 		self.manageAnimButtons(enable=False)
 		self.selectedAnimText = "yes"
 		self.on_click_play_animation()
-	
+
 	def on_click_no(self):
 		self.manageAnimButtons(enable=False)
 		self.selectedAnimText = "no"

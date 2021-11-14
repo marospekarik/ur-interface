@@ -7,7 +7,7 @@ import json
 # pip install opencv-contrib-python
 
 def GetCurrentFrame():
-	cv2.namedWindow("preview")
+	# cv2.namedWindow("preview")
 	vc = cv2.VideoCapture(1)
 	i = 0
 	if vc.isOpened(): # try to get the first frame
@@ -29,8 +29,8 @@ def GetCurrentFrame():
 
 	# cv2.destroyWindow("preview")
 	# cv2.destroyWindow("cap")
-	cv2.imshow("frame", frame)
-	cv2.waitKey(0)
+	# cv2.imshow("frame", frame)
+	# cv2.waitKey(0)
 	return frame
 
 
@@ -113,7 +113,6 @@ def BackgroundSubtraction():
 	thresh  = cv2.threshold(difference, 40, 255, cv2.THRESH_BINARY)[1]
 	thresh = cv2.erode(thresh, None, iterations=2)
 	thresh = cv2.dilate(thresh, None, iterations=2)
-
 
 	# Transfer the thresholded image to the original image
 
@@ -198,4 +197,4 @@ def Thinning(image):
 
 	return [lstcont, temp_img]
 
-Thinning(BackgroundSubtraction())
+# Thinning(BackgroundSubtraction())

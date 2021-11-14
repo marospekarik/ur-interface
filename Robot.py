@@ -340,6 +340,44 @@ class MyRobot(URBasic.urScriptExt.UrScriptExt):
 		self.draw_waypoints_worker()
 		return
 
+	def RunDrawWptPure(self,lines, image):
+		listWpt = []
+
+		maxAcc = 0.2
+		maxVel = 0.3
+
+		def addNewWpt(eachPoint, newCountour = False):
+			x, y, z  = self.PixelTranslation(eachPoint[0], eachPoint[1], image.shape[0], image.shape[1])
+			offset = self.zHover if newCountour else self.zOffset
+			pose = [x,y,-z + offset,self.toolRotation[0],self.toolRotation[1],self.toolRotation[2]]
+			robotCoordFormat = {'pose': pose, 'a':maxAcc, 'v':maxVel, 't':0, 'r':0.004}
+			listWpt.append(robotCoordFormat)
+			return [x,y]
+
+		#Crop the image space to match the input image size
+		self.calculateCroppedSizing(image.shape[0], image.shape[1])
+		line_num = 0
+
+		for q in range(0,len(lines)):
+			line = lines[q]
+			line_num += 1
+			downsampledLine = np.array(line)[::3]
+			# Jump to another line
+			addNewWpt([downsampledLine[0,0], downsampledLine[0,1]], newCountour=True)
+			plotData = []
+			if len(downsampledLine)>0:
+				for eachPoint in downsampledLine:
+					[plotX, plotY] = addNewWpt(eachPoint)
+					plotData.append([plotX,plotY])
+			self.plotTrajectory(plotData)
+
+		plt.show()
+		self.wpts = listWpt
+		# initTargetPose = listWpt[0]["pose"]
+		self.ExecuteSingleLinearJoint(self.initTargetDrawPose, a=0.2, v=0.4)
+		self.draw_waypoints_worker()
+		return
+
 	def plotTrajectory(self, eachPoint):
 		arr = np.array(eachPoint)
 		plt.plot(arr[:,1],arr[:,0])
